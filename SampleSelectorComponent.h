@@ -5,7 +5,8 @@
 
 class SampleSelectorComponent : public juce::Component,
                                 public juce::TableListBoxModel,
-                                public juce::FileDragAndDropTarget
+                                public juce::FileDragAndDropTarget,
+                                public juce::KeyListener
 
 {
 public:
@@ -14,15 +15,14 @@ public:
     : audio(dm, sl)
     {
 
-        //loadData();
-
-        // Create our table component and add it to this component..
         addAndMakeVisible(table);
         table.setModel(this);
         table.setColour(juce::ListBox::outlineColourId, juce::Colours::grey);
         table.setOutlineThickness(1);
         table.setMultipleSelectionEnabled(true);
 
+        table.setWantsKeyboardFocus(true);
+        table.addKeyListener(this);
 
         auto &header = table.getHeader();
 
@@ -37,16 +37,13 @@ public:
         header.setColumnVisible(2, false);
 
         addAndMakeVisible(startButton);
-
     }
 
-    // This is overloaded from TableListBoxModel, and must return the total number of rows in our table
     int getNumRows() override
     {
         return data.getNumRows();
     }
 
-    // This is overloaded from TableListBoxModel, and should fill in the background of the whole row
     void
     paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/, int /*height*/, bool rowIsSelected) override
     {
@@ -58,8 +55,6 @@ public:
             g.fillAll(alternateColour);
     }
 
-    // This is overloaded from TableListBoxModel, and must paint any cells that aren't using custom
-    // components.
     void paintCell(juce::Graphics &g, int rowNumber, int columnId,
                    int width, int height, bool /*rowIsSelected*/) override
     {
@@ -75,8 +70,6 @@ public:
         g.fillRect(width - 1, 0, 1, height);
     }
 
-    // This is overloaded from TableListBoxModel, and tells us that the user has clicked a table header
-    // to change the sort order.
     void sortOrderChanged(int newSortColumnId, bool isForwards) override
     {
         if (newSortColumnId != 0) {
@@ -85,7 +78,6 @@ public:
         }
     }
 
-    // This is overloaded from TableListBoxModel, and must update any custom components that we're using
     Component *refreshComponentForCell(int rowNumber, int columnId, bool /*isRowSelected*/,
                                        Component *existingComponentToUpdate) override
     {
@@ -105,11 +97,9 @@ public:
         }
     }
 
-    // This is overloaded from TableListBoxModel, and should choose the best width for the specified
-    // column.
     int getColumnAutoSizeWidth(int columnId) override
     {
-        int widest = 120;
+        int widest = 100;
 
         for (int i = getNumRows(); --i >= 0;) {
             auto text = data.getFieldAsString(SampleRepository::idToColumn(columnId), i);
@@ -119,7 +109,7 @@ public:
         return widest + 8;
     }
 
-    //==============================================================================
+
     void resized() override
     {
         auto bounds = getLocalBounds();
@@ -143,8 +133,6 @@ public:
     {
         return true;
     }
-
-
 
     void setOnStartButtonClick(const std::function<void(std::vector<SampleInfos>&&)>& action)
     {
@@ -187,6 +175,17 @@ public:
         };
     }
 
+    bool keyPressed(const juce::KeyPress& key,
+                    juce::Component* originatingComponent) override
+    {
+        if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
+        {
+            data.removeSamples(table.getSelectedRows());
+            table.updateContent();
+            return true;
+        }
+        return false;
+    }
     void selectedRowsChanged(int lastRowSelected) override
     {
         if(lastRowSelected != -1){
@@ -195,7 +194,6 @@ public:
         }
         else
             audio.stop();
-
     }
 
     void saveRepositoryToDisk()
@@ -239,6 +237,7 @@ private:
     juce::Font font{14.0f};
     SampleRepository data;
     SampleSelectorAudio audio;
+
 
 
     void setSampleType(int row, SampleType type)
@@ -290,12 +289,14 @@ private:
     };
 
 
-    void showMissingSamplesDialog()
+    static void showMissingSamplesDialog()
     {
         juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::NoIcon, "You baddie",
                                           "You need all three sample types",
                                           "OK");
     }
+
+
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleSelectorComponent)

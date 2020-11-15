@@ -78,6 +78,31 @@ public:
         numRows++;
     }
 
+    void removeSamples(const juce::SparseSet<int>& rowIndexes)
+    {
+        auto numRowsToDelete = rowIndexes.size();
+
+        std::vector<int> sampleIndexes;
+        for(auto i = 0; i < numRowsToDelete ; ++i)
+        {
+            sampleIndexes.push_back(ids[rowIndexes[i]]);
+        }
+
+        //remove the rows
+        for(auto i = 0; i < numRowsToDelete ; ++i)
+        {
+            ids.erase(ids.begin() + rowIndexes[i] - i);
+        }
+
+        //remove the samples
+        for(auto i = 0; i < numRowsToDelete; ++i)
+        {
+            rows.erase(rows.begin() + sampleIndexes[i] - i);
+        }
+        numRows = numRows - numRowsToDelete;
+    }
+
+
     [[nodiscard]] int getNumRows() const
     { return numRows; }
 
