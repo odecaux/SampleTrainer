@@ -21,6 +21,7 @@ public:
         table.setColour(juce::ListBox::outlineColourId, juce::Colours::grey);
         table.setOutlineThickness(1);
         table.setMultipleSelectionEnabled(true);
+        table.setClickingTogglesRowSelection(true);
 
         table.setWantsKeyboardFocus(true);
         table.addKeyListener(this);
