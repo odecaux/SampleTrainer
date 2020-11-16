@@ -89,18 +89,16 @@ public:
             sampleIndexes.push_back(ids[rowIndexes[i]]);
         }
 
-        //remove the rows
-        for(auto i = 0; i < numRowsToDelete ; ++i)
-        {
-            ids.erase(ids.begin() + rowIndexes[i] - i);
-        }
-
         //remove the samples
         for(auto i = 0; i < numRowsToDelete; ++i)
         {
             rows.erase(rows.begin() + sampleIndexes[i] - i);
         }
+
         numRows = numRows - numRowsToDelete;
+        ids = std::vector<int>(numRows);
+        std::ranges::generate(ids, [n = 0] () mutable { return n++; });
+        sortByColumn(currentSortingColumn);
     }
 
 
@@ -146,9 +144,11 @@ public:
         sortByColumn(column);
     }
 
-    void sortByColumn(Column column)
+    void sortByColumn(Column columnToSortBy)
     {
-        switch (column) {
+        currentSortingColumn = columnToSortBy;
+
+        switch (columnToSortBy) {
             case id:
                 std::ranges::sort(ids);
                 break;
@@ -200,6 +200,7 @@ private:
     std::vector<SampleInfos> rows;
 
     int numRows = 0;
+    Column currentSortingColumn;
 
     bool existsInRepository(const SampleInfos& sampleToTest)
     {

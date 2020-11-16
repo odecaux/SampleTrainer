@@ -14,13 +14,22 @@ public:
     }
 
     ~MySamplerVoice() = default;
-    int getAssignedNote() const                                   { return assignedNote; }
 
-    void startNote()                                              { samplePosition = 0.0; isPlaying = true; }
-    void stopNote()                                               {
-        samplePosition = 0.0; isPlaying = false ; }
+    void startNote()
+    {
+        pitchRatio =  sample->sourceSampleRate / getSampleRate();
+        sourceSamplePosition = 0.0;
+        isPlaying = true;
+    }
+
+    void stopNote()
+    {
+        sourceSamplePosition = 0.0; isPlaying = false ;
+    }
+
     bool isVoiceActive() const                                    { return isPlaying; }
-    int getSamplePosition() const                                 { return static_cast<int>(samplePosition);}
+    int getAssignedNote() const                                   { return assignedNote; }
+    int getSamplePosition() const                                 { return static_cast<int>(sourceSamplePosition);}
 
     void setCurrentPlaybackSampleRate(double newRate)             { currentSampleRate = newRate; }
     double getSampleRate() const noexcept                         { return currentSampleRate; }
@@ -41,14 +50,14 @@ public:
 
         while (--numSamples >= 0)
         {
-            auto pos = (int)samplePosition;
+            auto pos = (int)sourceSamplePosition;
 
-            if (samplePosition > length)
+            if (pos > length)
             {
                 stopNote();
                 break;
             }
-            auto alpha = (float)(samplePosition - pos);
+            auto alpha = (float)(sourceSamplePosition - pos);
             auto invAlpha = 1.0f - alpha;
 
             // just using a very simple linear interpolation here..
@@ -66,8 +75,7 @@ public:
                 *outL++ += (l + r) * 0.5f;
             }
 
-            samplePosition++;
-
+            sourceSamplePosition += pitchRatio;
         }
 
     }
@@ -88,12 +96,13 @@ private:
     friend class MySampler;
 
     double currentSampleRate = 44100.0;
+    double pitchRatio{};
 
     AudioBuffer<float> tempBuffer;
 
     SampleBuffer::Ptr sample;
 
-    double samplePosition = 0;
+    double sourceSamplePosition = 0;
     bool isPlaying = false;
     int assignedNote;
 

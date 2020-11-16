@@ -181,6 +181,7 @@ public:
     {
         if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
         {
+            audio.stopAndRelease();
             data.removeSamples(table.getSelectedRows());
             table.updateContent();
             return true;

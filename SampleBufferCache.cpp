@@ -19,8 +19,8 @@ SampleBuffer::Ptr SampleBufferCache::createBuffer(const SampleInfos &sampleInfos
     jassert(length > 0);
     jassert(numChannels > 0);
 
-    auto newBuffer = juce::AudioBuffer<float>(numChannels, length);
-    reader->read(&newBuffer, 0, length, 0, true, true);
+    auto newBuffer = juce::AudioBuffer<float>(numChannels, length + 4);
+    reader->read(&newBuffer, 0, length + 4, 0, true, true);
 
     SampleBuffer::Ptr newSampleBuffer = new SampleBuffer{sampleInfos.file,
                                                          std::move(newBuffer),
