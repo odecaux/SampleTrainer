@@ -173,6 +173,7 @@ public:
 private:
     class SampleListModel : public juce::ListBoxModel
     {
+        //TODO changer les méthodes de click
     public:
 
         explicit SampleListModel(juce::Component& parent) : parent(parent){
@@ -188,6 +189,11 @@ private:
         int getNumRows() override
         {
             return samples.size();
+        }
+
+        void selectedRowsChanged (int lastRowSelected) override
+        {
+            lastRow = lastRowSelected;
         }
 
         void paintListBoxItem(int rowNumber, Graphics &g, int width, int height, bool rowIsSelected) override
@@ -220,10 +226,6 @@ private:
             return samples[rowId];
         }
 
-        void selectedRowsChanged (int lastRowSelected) override
-        {
-            lastRow = lastRowSelected;
-        }
 
 
     private:
@@ -247,9 +249,9 @@ private:
     SampleListModel snareModel;
     SampleListModel hatsModel;
 
-    SampleInfos* usedKick;
-    SampleInfos* usedSnare;
-    SampleInfos* usedHats;
+    SampleInfos* usedKick{};
+    SampleInfos* usedSnare{};
+    SampleInfos* usedHats{};
 
 
     void initGame()

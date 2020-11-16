@@ -35,7 +35,7 @@ public:
     [[nodiscard]] juce::String serialize() const
     {
         juce::String out;
-        out <<"\""<< file.getFullPathName()<<"\","<<type<<","<<rank;
+        out <<"\""<< getPath() <<"\","<<type<<","<<rank;
         return out;
     }
 
@@ -56,6 +56,7 @@ public:
 
 class SampleRepository
 {
+    //TODO le déplacer dans mainComponent
 public:
     SampleInfos& getSampleInfos(int id)
     {

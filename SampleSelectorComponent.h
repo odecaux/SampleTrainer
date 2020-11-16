@@ -9,6 +9,7 @@ class SampleSelectorComponent : public juce::Component,
                                 public juce::KeyListener
 
 {
+    //TODO supprimer le keyListener
 public:
     SampleSelectorComponent(juce::AudioDeviceManager& dm,
                             SampleBufferCache& sl)
@@ -218,6 +219,8 @@ public:
     {
         auto file = juce::File::getCurrentWorkingDirectory().getChildFile("table.csv");
 
+        if(!file.existsAsFile())
+            return;
         juce::StringArray lines;
         file.readLines(lines);
         for(const auto& line : lines)
