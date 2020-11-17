@@ -5,11 +5,9 @@
 
 class SampleSelectorComponent : public juce::Component,
                                 public juce::TableListBoxModel,
-                                public juce::FileDragAndDropTarget,
-                                public juce::KeyListener
+                                public juce::FileDragAndDropTarget
 
 {
-    //TODO supprimer le keyListener
 public:
     SampleSelectorComponent(juce::AudioDeviceManager& dm,
                             SampleBufferCache& sl)
@@ -23,20 +21,18 @@ public:
         table.setMultipleSelectionEnabled(true);
         table.setClickingTogglesRowSelection(true);
 
-        table.setWantsKeyboardFocus(true);
-        table.addKeyListener(this);
-
         auto &header = table.getHeader();
 
-        header.addColumn("ID", 1, 100);
+        header.addColumn("ID", 1, 40, 30, 40);
         header.addColumn("path", 2, 100);
-        header.addColumn("name", 3, 100);
-        header.addColumn("sample type", 4, 100);
-        header.addColumn("rank", 5, 100);
+        header.addColumn("name", 3, 150, 100);
+        header.addColumn("sample type", 4, 100, 75);
+        header.addColumn("rank", 5, 30);
 
         // we could now change some initial settings..
         header.setSortColumnId(1, true);
         header.setColumnVisible(2, false);
+        header.setColumnVisible(5, false);
 
         addAndMakeVisible(startButton);
     }
@@ -167,7 +163,6 @@ public:
                         break;
                 }
 
-                //TODO copy/move constructor pour SampleInfos
                 samples.push_back(sampleInfos);
             }
             if(hasKick && hasSnare && hasHats)
@@ -177,22 +172,18 @@ public:
         };
     }
 
-    bool keyPressed(const juce::KeyPress& key,
-                    juce::Component* originatingComponent) override
+    void deleteKeyPressed (int) override
     {
-        if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
-        {
-            audio.stopAndRelease();
-            data.removeSamples(table.getSelectedRows());
-            table.updateContent();
-            return true;
-        }
-        return false;
+        audio.stopAndRelease();
+        data.removeSamples(table.getSelectedRows());
+        table.updateContent();
     }
-    void selectedRowsChanged(int lastRowSelected) override
+
+    void cellClicked (int rowNumber, int columnId, const juce::MouseEvent &) override
     {
-        if(lastRowSelected != -1){
-            auto& row = data.getSampleInfos(lastRowSelected);
+        if(table.getSelectedRows().contains(rowNumber))
+        {
+            auto& row = data.getSampleInfos(rowNumber);
             audio.playSound(row);
         }
         else
