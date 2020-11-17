@@ -2,11 +2,10 @@ cmake_minimum_required(VERSION 3.12)
 
 project(SAMPLE_TRAINER VERSION 0.0.1)
 
-set(CMAKE_PREFIX_PATH "C:\\JUCE")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -EHsc")
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(JUCE CONFIG REQUIRED )
+add_subdirectory(JUCE)
 
 juce_add_gui_app(SampleTrainer
     PRODUCT_NAME "Sample Trainer")     
