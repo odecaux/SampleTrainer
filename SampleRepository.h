@@ -92,7 +92,8 @@ public:
         //remove the samples
         for(auto i = 0; i < numRowsToDelete; ++i)
         {
-            rows.erase(rows.begin() + sampleIndexes[i] - i);
+            auto index_to_erase = sampleIndexes[i] - i;
+            rows.erase(rows.begin() + index_to_erase);
         }
 
         numRows = numRows - numRowsToDelete;

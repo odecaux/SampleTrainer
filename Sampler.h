@@ -24,7 +24,8 @@ public:
 
     void stopNote()
     {
-        sourceSamplePosition = 0.0; isPlaying = false ;
+        sourceSamplePosition = 0.0;
+        isPlaying = false ;
     }
 
     bool isVoiceActive() const                                    { return isPlaying; }
@@ -39,8 +40,9 @@ public:
         auto& buffer = sample->buffer;
         auto length = buffer.getNumSamples();
 
-        if (!isVoiceActive())
+        if(!isVoiceActive())
             return;
+
 
         const float* const inL = buffer.getReadPointer(0);
         const float* const inR = buffer.getNumChannels() > 1 ? buffer.getReadPointer(1) : nullptr;
@@ -52,7 +54,7 @@ public:
         {
             auto pos = (int)sourceSamplePosition;
 
-            if (pos > length)
+            if (sourceSamplePosition >= length)
             {
                 stopNote();
                 break;
@@ -117,11 +119,6 @@ public:
 
     ~MySampler() = default;
 
-    void clearVoices()
-    {
-        const ScopedLock sl(lock);
-        voices.clear();
-    }
 
     [[nodiscard]] int getNumVoices() const noexcept                               { return voices.size(); }
 
@@ -144,6 +141,11 @@ public:
         const ScopedLock sl(lock);
         voices.remove(index);
     }
+    void clearVoices()
+    {
+        const ScopedLock sl(lock);
+        voices.clear();
+    }
 
     //==============================================================================
     void noteOn(int midiNoteNumber)
@@ -158,20 +160,6 @@ public:
                     stopVoice(voice);
 
                 startVoice(voice);
-            }
-        }
-    }
-
-    void noteOff (int midiNoteNumber,
-                  bool allowTailOff)
-    {
-        const ScopedLock sl(lock);
-
-        for (auto* voice : voices)
-        {
-            if (voice->isVoiceActive() && midiNoteNumber == voice->getAssignedNote())
-            {
-                //stopVoice (voice);
             }
         }
     }
@@ -330,6 +318,8 @@ private:
         std::for_each(midiIterator,
                       midiData.cend(),
                       [&](const MidiMessageMetadata& meta) { handleMidiEvent(meta.getMessage()); });
+
+        std::for_each(outputAudio.getReadPointer(0), outputAudio.getReadPointer(0) + numSamples, [](float s){ jassert(s < 1);});
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MySampler)
