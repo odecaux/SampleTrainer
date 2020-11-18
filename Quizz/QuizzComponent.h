@@ -61,7 +61,6 @@ public:
     void addSample(const SampleInfos& sampleInfos, SampleBufferCache& cache)
     {
         auto buffer = cache.getOrCreateSampleBuffer(sampleInfos);
-        //TODO setup types
         sampler.addVoice(new MySamplerVoice(buffer, 60 + sampleInfos.type));
         mSampleCount++;
     }
@@ -95,8 +94,6 @@ public:
     explicit QuizzComponent(juce::AudioDeviceManager& dm, SampleBufferCache& cache)
         : deviceManager(dm), kickModel(*this), snareModel(*this), hatsModel(*this), cache(cache)
     {
-
-
         kickList.setModel(&kickModel);
         snareList.setModel(&snareModel);
         hatsList.setModel(&hatsModel);
@@ -173,12 +170,9 @@ public:
 private:
     class SampleListModel : public juce::ListBoxModel
     {
-        //TODO changer les méthodes de click
     public:
 
-        explicit SampleListModel(juce::Component& parent) : parent(parent){
-
-        }
+        explicit SampleListModel(juce::Component& parent) : parent(parent){}
 
         SampleListModel() = delete;
 
@@ -191,9 +185,10 @@ private:
             return samples.size();
         }
 
-        void selectedRowsChanged (int lastRowSelected) override
+        void listBoxItemClicked(int row, const MouseEvent & mouseEvent) override
         {
-            lastRow = lastRowSelected;
+            lastRow = row;
+
         }
 
         void paintListBoxItem(int rowNumber, Graphics &g, int width, int height, bool rowIsSelected) override
@@ -293,7 +288,6 @@ private:
             }
             else
             {
-
                 juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::NoIcon, "Bad",
                                                         "Wrongs Samples",
                                                         "OK",

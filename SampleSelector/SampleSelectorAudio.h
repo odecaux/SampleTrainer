@@ -45,6 +45,7 @@ public:
         transportSource.setSource (nullptr);
         memorySource.reset();
 
+        //TODO faire une meilleure gestion des erreurs
         auto sample = sampleLoader.getOrCreateSampleBuffer(sampleInfos);
 
         memorySource = std::make_unique<juce::MemoryAudioSource>(sample->buffer, false, false);

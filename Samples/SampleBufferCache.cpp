@@ -10,11 +10,13 @@ SampleBuffer::Ptr SampleBufferCache::createBuffer(const SampleInfos &sampleInfos
 {
     std::unique_ptr<juce::AudioFormatReader> reader{formatManager.createReaderFor(sampleInfos.file)};
 
-    //TODO checker que le reader existe bien
+    if(reader == nullptr)
+        return nullptr;
 
-    int length = static_cast<int>(reader->lengthInSamples);
     auto numChannels = juce::jmin(static_cast<int>(reader->numChannels), 2);
     auto sourceSampleRate = reader->sampleRate;
+    int length = juce::jmin<int>(reader->lengthInSamples,
+                            sourceSampleRate * 5);
 
     jassert(length > 0);
     jassert(numChannels > 0);

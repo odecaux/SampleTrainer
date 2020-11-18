@@ -65,6 +65,7 @@ public:
 
     void createSample(const juce::File& file)
     {
+        //TODO il faudrait checker si le reader peut l'ouvrir ptn
         if (file.existsAsFile()) {
             addSample({file, kick, 0});
         }

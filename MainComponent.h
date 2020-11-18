@@ -1,12 +1,12 @@
 #pragma once
-#include "SampleBufferCache.h"
-#include "SampleRepository.h"
-#include "SampleSelectorAudio.h"
-#include "SampleSelectorComponent.h"
+#include "Samples/SampleBufferCache.h"
+#include "Samples/SampleRepository.h"
+#include "SampleSelector/SampleSelectorAudio.h"
+#include "SampleSelector/SampleSelectorComponent.h"
 
-#include "Sampler.h"
-#include "Sequencer.h"
-#include "QuizzComponent.h"
+#include "Samples/Sampler.h"
+#include "Quizz/Sequencer.h"
+#include "Quizz/QuizzComponent.h"
 
 using namespace juce;
 
