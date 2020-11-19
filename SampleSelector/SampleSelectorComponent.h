@@ -1,299 +1,110 @@
 #pragma once
 
-#include <memory>
-#include <utility>
-
 class SampleSelectorComponent : public juce::Component,
                                 public juce::TableListBoxModel,
                                 public juce::FileDragAndDropTarget
 
 {
 public:
-    SampleSelectorComponent(juce::AudioDeviceManager& dm,
-                            SampleBufferCache& sl)
-    : audio(dm, sl)
-    {
+  SampleSelectorComponent(juce::AudioDeviceManager &dm, SampleBufferCache &sl);
 
-        addAndMakeVisible(table);
-        table.setModel(this);
-        table.setColour(juce::ListBox::outlineColourId, juce::Colours::grey);
-        table.setOutlineThickness(1);
-        table.setMultipleSelectionEnabled(true);
-        table.setClickingTogglesRowSelection(true);
+  void resized() override;
 
-        auto &header = table.getHeader();
+  //------------------------------------------------------
 
-        header.addColumn("ID", 1, 40, 30, 40);
-        header.addColumn("path", 2, 100);
-        header.addColumn("name", 3, 150, 100);
-        header.addColumn("sample type", 4, 100, 75);
-        header.addColumn("rank", 5, 30);
+  int getNumRows() override { return data.getNumRows(); }
 
-        // we could now change some initial settings..
-        header.setSortColumnId(1, true);
-        header.setColumnVisible(2, false);
-        header.setColumnVisible(5, false);
+  void paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
+                          int /*height*/, bool rowIsSelected) override;
 
-        addAndMakeVisible(startButton);
-    }
+  void paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
+                 int height, bool /*rowIsSelected*/) override;
 
-    int getNumRows() override
-    {
-        return data.getNumRows();
-    }
+  void sortOrderChanged(int newSortColumnId, bool isForwards) override;
 
-    void
-    paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/, int /*height*/, bool rowIsSelected) override
-    {
-        auto alternateColour = getLookAndFeel().findColour(juce::ListBox::backgroundColourId)
-                .interpolatedWith(getLookAndFeel().findColour(juce::ListBox::textColourId), 0.03f);
-        if (rowIsSelected)
-            g.fillAll(juce::Colours::lightblue);
-        else if (rowNumber % 2)
-            g.fillAll(alternateColour);
-    }
+  Component *
+  refreshComponentForCell(int rowNumber, int columnId, bool /*isRowSelected*/,
+                          Component *existingComponentToUpdate) override;
 
-    void paintCell(juce::Graphics &g, int rowNumber, int columnId,
-                   int width, int height, bool /*rowIsSelected*/) override
-    {
-        g.setColour(getLookAndFeel().findColour(juce::ListBox::textColourId));
-        g.setFont(font);
+  int getColumnAutoSizeWidth(int columnId) override;
 
-        if (rowNumber < getNumRows()) {
-            auto cellText = data.getFieldAsString(SampleRepository::idToColumn(columnId), rowNumber);
-            g.drawText(cellText, 2, 0, width - 4, height, juce::Justification::centredLeft, true);
-        }
+  void cellClicked(int rowNumber, int columnId,
+                   const juce::MouseEvent &) override;
 
-        g.setColour(getLookAndFeel().findColour(juce::ListBox::backgroundColourId));
-        g.fillRect(width - 1, 0, 1, height);
-    }
+  void deleteKeyPressed(int) override;
 
-    void sortOrderChanged(int newSortColumnId, bool isForwards) override
-    {
-        if (newSortColumnId != 0) {
-            data.sortByColumnId(newSortColumnId);
-            table.updateContent();
-        }
-    }
+  //-------------------------------------------------------
 
-    Component *refreshComponentForCell(int rowNumber, int columnId, bool /*isRowSelected*/,
-                                       Component *existingComponentToUpdate) override
-    {
-        if (columnId == 4)
-        {
-            auto *ratingsBox = dynamic_cast<SampleTypeCustomComponent*>(existingComponentToUpdate);
+  void filesDropped(const juce::StringArray &files, int /*x*/,
+                    int /*y*/) override;
 
-            if (ratingsBox == nullptr)
-                ratingsBox = new SampleTypeCustomComponent(*this);
+  bool isInterestedInFileDrag(const juce::StringArray &files) override {
+    return true;
+  }
 
-            ratingsBox->setRowAndColumn(rowNumber, columnId);
-            return ratingsBox;
-        } else // The ID and Length columns do not have a custom component
-        {
-            jassert (existingComponentToUpdate == nullptr);
-            return nullptr;
-        }
-    }
+  //-------------------------------------------------------
 
-    int getColumnAutoSizeWidth(int columnId) override
-    {
-        int widest = 100;
+  void setOnStartButtonClick(
+      const std::function<void(std::vector<SampleInfos> &&)> &action);
 
-        for (int i = getNumRows(); --i >= 0;) {
-            auto text = data.getFieldAsString(SampleRepository::idToColumn(columnId), i);
-            widest = juce::jmax(widest, font.getStringWidth(text));
-        }
+  void saveRepositoryToDisk();
 
-        return widest + 8;
-    }
-
-
-    void resized() override
-    {
-        auto bounds = getLocalBounds();
-        bounds.reduce(8,8);
-        auto tableBounds = bounds.withTrimmedBottom(50);
-        table.setBounds( tableBounds );
-        auto startButtonBounds = bounds.withTrimmedTop(tableBounds.getHeight())
-                .reduced(0,8);
-        startButton.setBounds(startButtonBounds.withLeft(startButtonBounds.getWidth() - 100));
-    }
-
-    void filesDropped(const juce::StringArray &files, int /*x*/, int /*y*/) override
-    {
-        for (const auto &file : files) {
-            data.createSample(file);
-        }
-        table.updateContent();
-    }
-
-    bool isInterestedInFileDrag(const juce::StringArray &files) override
-    {
-        return true;
-    }
-
-    void setOnStartButtonClick(const std::function<void(std::vector<SampleInfos>&&)>& action)
-    {
-        startButton.onClick = [action, this] {
-            auto rowIds = table.getSelectedRows();
-            if(rowIds.size() == 0)
-                return;
-
-            //TODO c'est super nul comme implémentation
-            bool hasKick = false;
-            bool hasSnare = false;
-            bool hasHats = false;
-
-            audio.stopAndRelease();
-
-            std::vector<SampleInfos> samples;
-            for (auto i = 0; i < rowIds.size(); ++i) {
-                auto rowId = rowIds[i];
-                auto& sampleInfos = data.getSampleInfos(rowId);
-
-                switch (sampleInfos.type) {
-                    case kick:
-                        hasKick = true;
-                        break;
-                    case snare:
-                        hasSnare = true;
-                        break;
-                    case hats:
-                        hasHats = true;
-                        break;
-                }
-
-                samples.push_back(sampleInfos);
-            }
-            if(hasKick && hasSnare && hasHats)
-                action(std::move(samples));
-            else
-                showMissingSamplesDialog();
-        };
-    }
-
-    void deleteKeyPressed (int) override
-    {
-        audio.stopAndRelease();
-        data.removeSamples(table.getSelectedRows());
-        table.updateContent();
-    }
-
-    void cellClicked (int rowNumber, int columnId, const juce::MouseEvent &) override
-    {
-        if(table.getSelectedRows().contains(rowNumber))
-        {
-            auto& row = data.getSampleInfos(rowNumber);
-            audio.playSound(row);
-        }
-        else
-            audio.stop();
-    }
-
-    void saveRepositoryToDisk()
-    {
-        auto out = data.serialize();
-        auto file = juce::File::getCurrentWorkingDirectory().getChildFile("table.csv");
-        if(!file.existsAsFile())
-        {
-            if(!file.create()){
-                juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::NoIcon, "Error",
-                                                        "Couldn't save table",
-                                                        "OK");
-                return;
-            }
-        }
-        else {
-            file.replaceWithText(out);
-        }
-    }
-
-    void loadRepositoryFromDisk()
-    {
-        auto file = juce::File::getCurrentWorkingDirectory().getChildFile("table.csv");
-
-        if(!file.existsAsFile())
-            return;
-        juce::StringArray lines;
-        file.readLines(lines);
-        for(const auto& line : lines)
-        {
-            if(line.isEmpty())
-                break;
-            auto sample = SampleInfos::deserialize(line);
-            if(sample)
-                data.addSample(std::move(*sample));
-        }
-        table.updateContent();
-    }
+  void loadRepositoryFromDisk();
 
 private:
-    juce::TableListBox table;     // the table component itself
-    juce::TextButton startButton{"Start"};
-    juce::Font font{14.0f};
-    SampleRepository data;
-    SampleSelectorAudio audio;
+  juce::TableListBox table; // the table component itself
+  juce::TextButton startButton{"Start"};
+  juce::Font font{14.0f};
+  SampleRepository data;
+  SampleSelectorAudio audio;
 
+  void setSampleType(int row, SampleType type) {
+    data.setSampleType(row, type);
+  }
 
+  SampleType getSampleType(int row) { return data.getSampleType(row); }
 
-    void setSampleType(int row, SampleType type)
-    {
-        data.setSampleType(row, type);
+  //==============================================================================
+  // This is a custom component containing a combo box, which we're going to put
+  // inside our table's "rating" column.
+  class SampleTypeCustomComponent : public Component {
+  public:
+    explicit SampleTypeCustomComponent(SampleSelectorComponent &td)
+        : owner(td) {
+      // just put a combo box inside this component
+      addAndMakeVisible(comboBox);
+      comboBox.addItem("kick", SampleType::kick);
+      comboBox.addItem("snare", SampleType::snare);
+      comboBox.addItem("hats", SampleType::hats);
+
+      comboBox.onChange = [this] {
+        owner.setSampleType(row, SampleType(comboBox.getSelectedId()));
+      };
+      comboBox.setWantsKeyboardFocus(false);
     }
 
-    SampleType getSampleType(int row )
-    {
-        return data.getSampleType(row);
+    void resized() override {
+      comboBox.setBoundsInset(juce::BorderSize<int>(2));
     }
 
-//==============================================================================
-    // This is a custom component containing a combo box, which we're going to put inside
-    // our table's "rating" column.
-    class SampleTypeCustomComponent : public Component
-    {
-    public:
-        explicit SampleTypeCustomComponent(SampleSelectorComponent &td) : owner(td)
-        {
-            // just put a combo box inside this component
-            addAndMakeVisible(comboBox);
-            comboBox.addItem("kick", kick);
-            comboBox.addItem("snare", snare);
-            comboBox.addItem("hats", hats);
-
-            comboBox.onChange = [this] {
-                owner.setSampleType(row, SampleType(comboBox.getSelectedId()));
-            };
-            comboBox.setWantsKeyboardFocus(false);
-        }
-
-        void resized() override
-        {
-            comboBox.setBoundsInset(juce::BorderSize<int>(2));
-        }
-
-        // Our demo code will call this when we may need to update our contents
-        void setRowAndColumn(int newRow, int newColumn)
-        {
-            row = newRow;
-            comboBox.setSelectedId(owner.getSampleType(row), juce::dontSendNotification);
-        }
-
-    private:
-        SampleSelectorComponent &owner;
-        juce::ComboBox comboBox;
-        int row{};
-    };
-
-
-    static void showMissingSamplesDialog()
-    {
-        juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::NoIcon, "You baddie",
-                                          "You need all three sample types",
-                                          "OK");
+    // Our demo code will call this when we may need to update our contents
+    void setRowAndColumn(int newRow, int newColumn) {
+      row = newRow;
+      comboBox.setSelectedId(owner.getSampleType(row),
+                             juce::dontSendNotification);
     }
 
+  private:
+    SampleSelectorComponent &owner;
+    juce::ComboBox comboBox;
+    int row{};
+  };
 
+  static void showMissingSamplesDialog() {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::NoIcon, "You baddie",
+        "You need all three sample types", "OK");
+  }
 
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleSelectorComponent)
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SampleSelectorComponent)
 };
