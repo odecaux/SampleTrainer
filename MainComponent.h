@@ -8,13 +8,15 @@
 #include "Samples/SampleInfos.h"
 #include "Samples/SampleBufferCache.h"
 #include "Samples/SampleRepository.h"
-#include "Samples/SampleVoice.h"
-#include "Samples/Sampler.h"
-#include "Quizz/Sequencer.h"
-#include "Quizz/SamplerSource.h"
-#include "Quizz/QuizzComponent.h"
-#include "SampleSelector/SampleSelectorAudio.h"
+#include "Samples/SamplePlayer.h"
+
 #include "SampleSelector/SampleSelectorPanel.h"
+
+#include "Quizz/SampleVoice.h"
+#include "Quizz/Sampler.h"
+#include "Quizz/Sequencer.h"
+#include "Quizz/QuizzSource.h"
+#include "Quizz/QuizzComponent.h"
 
 using namespace juce;
 

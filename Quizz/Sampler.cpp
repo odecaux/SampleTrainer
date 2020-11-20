@@ -3,9 +3,9 @@
 //
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_core/juce_core.h>
-#include "SampleInfos.h"
-#include "SampleBufferCache.h"
-#include "SampleVoice.h"
+#include "../Samples/SampleInfos.h"
+#include "../Samples/SampleBufferCache.h"
+#include "../Quizz/SampleVoice.h"
 #include "Sampler.h"
 
 template void MySampler::processNextBlock<float>  (juce::AudioBuffer<float>&,  const juce::MidiBuffer&, int, int);

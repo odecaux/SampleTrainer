@@ -1,11 +1,14 @@
+
 #include "juce_audio_utils/juce_audio_utils.h"
 #include "juce_gui_extra/juce_gui_extra.h"
+
 #include "../Samples/SampleInfos.h"
 #include "../Samples/SampleBufferCache.h"
-#include "../Samples/SampleVoice.h"
-#include "../Samples/Sampler.h"
+#include "SampleVoice.h"
+#include "Sampler.h"
 #include "Sequencer.h"
-#include "SamplerSource.h"
+
+#include "QuizzSource.h"
 #include "QuizzComponent.h"
 
 QuizzComponent::QuizzComponent(juce::AudioDeviceManager &dm,

@@ -5,7 +5,7 @@ class Model : public juce::TableListBoxModel
 {
 public:
 
-  explicit Model(SampleSelectorAudio& audio, SampleRepository& repo)
+  explicit Model(SamplePlayer & audio, SampleRepository& repo)
       : audio(audio), repository(repo) {}
 
   int getNumRows() override { return repository.getNumRows(); }
@@ -62,7 +62,7 @@ public:
 private:
   juce::TableListBox* table = nullptr;
   SampleRepository& repository;
-  SampleSelectorAudio& audio;
+  SamplePlayer & audio;
 
   auto getSelectedRows() -> juce::SparseSet<int> { 
       jassert(table != nullptr);
@@ -105,7 +105,7 @@ private:
   juce::TextButton startButton{"Start"};
   juce::Font font{14.0f};
 
-  SampleSelectorAudio audio;
+  SamplePlayer audio;
   Model model;
 
   friend class Model;

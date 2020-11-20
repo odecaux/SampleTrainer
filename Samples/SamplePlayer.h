@@ -1,14 +1,14 @@
 #pragma once
 
-class SampleSelectorAudio {
+class SamplePlayer {
 public:
-  SampleSelectorAudio(juce::AudioDeviceManager &dm, SampleBufferCache &sl)
+  SamplePlayer(juce::AudioDeviceManager &dm, SampleBufferCache &sl)
       : audioDeviceManager(dm), sampleLoader(sl) {
     audioDeviceManager.addAudioCallback(&audioSourcePlayer);
     audioSourcePlayer.setSource(&transportSource);
   }
 
-  ~SampleSelectorAudio() {
+  ~SamplePlayer() {
     transportSource.setSource(nullptr);
     audioSourcePlayer.setSource(nullptr);
     audioDeviceManager.removeAudioCallback(&audioSourcePlayer);

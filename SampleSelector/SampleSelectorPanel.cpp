@@ -7,7 +7,7 @@
 #include "../Samples/SampleInfos.h"
 #include "../Samples/SampleBufferCache.h"
 #include "../Samples/SampleRepository.h"
-#include "SampleSelectorAudio.h"
+#include "../Samples/SamplePlayer.h"
 #include "SampleSelectorPanel.h"
 
 void Model::paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,

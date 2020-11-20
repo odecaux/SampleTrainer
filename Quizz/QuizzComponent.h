@@ -89,7 +89,7 @@ private:
     void modalStateFinished(int returnValue) override { parent.nextQuestion(); }
   };
   juce::AudioSourcePlayer audioSourcePlayer;
-  SamplerSource samplerSource;
+  QuizzSource samplerSource;
   juce::AudioDeviceManager &deviceManager;
   SampleBufferCache &cache;
 

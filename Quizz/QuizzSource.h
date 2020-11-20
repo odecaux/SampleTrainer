@@ -1,8 +1,8 @@
 #pragma once
 
-class SamplerSource : public juce::AudioSource {
+class QuizzSource : public juce::AudioSource {
 public:
-  SamplerSource() {
+  QuizzSource() {
     std::vector<Note> notes{
         {kick, 0},  {snare, 4},
         {kick, 7},  {kick, 8},  {snare, 12}};

@@ -14,7 +14,7 @@ juce_add_gui_app(SampleTrainer
 target_sources(SampleTrainer PRIVATE
         Main.cpp
         Samples/SampleBufferCache.cpp
-        Samples/Sampler.cpp
+        Quizz/Sampler.cpp
         Samples/SampleRepository.cpp
         SampleSelector/SampleSelectorPanel.cpp
         Quizz/QuizzComponent.cpp)
