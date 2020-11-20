@@ -1,8 +1,6 @@
 #pragma once
 #include <optional>
 
-
-//TODO ajouter des jassert
 class Model : public juce::TableListBoxModel
 {
 public:
@@ -66,7 +64,10 @@ private:
   SampleRepository& repository;
   SampleSelectorAudio& audio;
 
-  auto getSelectedRows() -> juce::SparseSet<int> { return table->getSelectedRows();}
+  auto getSelectedRows() -> juce::SparseSet<int> { 
+      jassert(table != nullptr);
+      return table->getSelectedRows();
+  }
 
   //TODO not an ideal solution either, because
   //1) I need to keep a reference to the table
@@ -108,14 +109,12 @@ private:
   Model model;
 
   friend class Model;
-  //==============================================================================
-  // This is a custom component containing a combo box, which we're going to put
-  // inside our table's "rating" column.
+  
   class SampleTypeCustomComponent : public Component {
   public:
     explicit SampleTypeCustomComponent(Model &td)
         : owner(td) {
-      // just put a combo box inside this component
+        
       addAndMakeVisible(comboBox);
       comboBox.addItem("kick", SampleType::kick);
       comboBox.addItem("snare", SampleType::snare);
@@ -131,7 +130,6 @@ private:
       comboBox.setBoundsInset(juce::BorderSize<int>(2));
     }
 
-    // Our demo code will call this when we may need to update our contents
     void setRowAndColumn(int newRow, int newColumn) {
       row = newRow;
       comboBox.setSelectedId(owner.getSampleType(row),
@@ -146,7 +144,7 @@ private:
 
   static void showMissingSamplesDialog() {
     juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::NoIcon, "You baddie",
+        juce::AlertWindow::NoIcon, "You badie",
         "You need all three sample types", "OK");
   }
 
