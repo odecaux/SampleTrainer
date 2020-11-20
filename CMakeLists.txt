@@ -16,7 +16,7 @@ target_sources(SampleTrainer PRIVATE
         Samples/SampleBufferCache.cpp
         Samples/Sampler.cpp
         Samples/SampleRepository.cpp
-        SampleSelector/SampleSelectorComponent.cpp
+        SampleSelector/SampleSelectorPanel.cpp
         Quizz/QuizzComponent.cpp)
 
 target_compile_definitions(SampleTrainer PRIVATE

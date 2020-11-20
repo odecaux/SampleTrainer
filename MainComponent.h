@@ -14,7 +14,7 @@
 #include "Quizz/SamplerSource.h"
 #include "Quizz/QuizzComponent.h"
 #include "SampleSelector/SampleSelectorAudio.h"
-#include "SampleSelector/SampleSelectorComponent.h"
+#include "SampleSelector/SampleSelectorPanel.h"
 
 using namespace juce;
 
@@ -25,25 +25,25 @@ public:
     mFormatManager.registerBasicFormats();
     deviceManager.initialiseWithDefaultDevices(0, 2);
 
-    sampleLoader = std::make_unique<SampleBufferCache>(mFormatManager);
+    cache = std::make_unique<SampleBufferCache>(mFormatManager);
 
-    sampleSelector =
-        std::make_unique<SampleSelectorComponent>(deviceManager, *sampleLoader);
+    sampleSelector = std::make_unique<SampleSelectorPanel>(deviceManager, *cache, repository);
+    quizz = std::make_unique<QuizzComponent>(deviceManager, *cache);
+
     sampleSelector->setOnStartButtonClick(
-        [&](std::vector<SampleInfos> &&samples) {
+        [&](std::vector<SampleInfos> &&samples)
+        {
           showComponent(quizz.get());
           quizz->addSamples(std::move(samples));
         });
 
+    loadRepositoryFromDisk();
     showComponent(sampleSelector.get());
-    sampleSelector->loadRepositoryFromDisk();
-
-    quizz = std::make_unique<QuizzComponent>(deviceManager, *sampleLoader);
 
     setSize(600, 400);
   }
 
-  ~MainComponent() override { sampleSelector->saveRepositoryToDisk(); }
+  ~MainComponent() override { saveRepositoryToDisk(); }
 
   //==============================================================================
   void paint(Graphics &g) override {}
@@ -57,12 +57,13 @@ private:
   AudioFormatManager mFormatManager;
   juce::AudioDeviceManager deviceManager;
 
-  std::unique_ptr<SampleSelectorComponent> sampleSelector;
+  std::unique_ptr<SampleSelectorPanel> sampleSelector;
   std::unique_ptr<QuizzComponent> quizz;
 
   juce::WeakReference<Component> panelComponent;
 
-  std::unique_ptr<SampleBufferCache> sampleLoader;
+  SampleRepository repository;
+  std::unique_ptr<SampleBufferCache> cache;
 
   void showComponent(juce::Component *newPanel) {
     if (newPanel != panelComponent) {
@@ -79,5 +80,40 @@ private:
     }
     resized();
   }
+
+
+  void saveRepositoryToDisk() {
+    auto out = repository.serialize();
+    auto file =
+        juce::File::getCurrentWorkingDirectory().getChildFile("table.csv");
+    if (!file.existsAsFile()) {
+      if (!file.create()) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::NoIcon, "Error",
+                                               "Couldn't save table", "OK");
+        return;
+      }
+    }
+    else {
+      file.replaceWithText(out);
+    }
+  }
+
+  void loadRepositoryFromDisk() {
+    auto file =
+        juce::File::getCurrentWorkingDirectory().getChildFile("table.csv");
+
+    if (!file.existsAsFile())
+      return;
+    juce::StringArray lines;
+    file.readLines(lines);
+    for (const auto &line : lines) {
+      if (line.isEmpty())
+        break;
+      auto sample = SampleInfos::deserialize(line);
+      if (sample)
+        repository.addSample(std::move(*sample));
+    }
+  }
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

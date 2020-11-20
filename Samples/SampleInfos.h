@@ -13,9 +13,13 @@ class SampleInfos {
 public:
   SampleInfos() = delete;
   SampleInfos(juce::File file, SampleType type, int rank)
-      : type(type), file(std::move(file)), rank(rank) {}
+      : type(type), file(std::move(file)), rank(rank) {
+  }
 
-  SampleInfos(const SampleInfos &other) = default;
+  SampleInfos(const SampleInfos &other)
+      : type(other.type), file(other.file), rank(other.rank)
+  {
+  }
   SampleInfos(SampleInfos &&other) noexcept = default;
   SampleInfos &operator=(const SampleInfos &other) = default;
   SampleInfos &operator=(SampleInfos &&other) = default;

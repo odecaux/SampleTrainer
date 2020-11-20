@@ -2,6 +2,7 @@
 #include <juce_core/juce_core.h>
 #include "SampleInfos.h"
 #include "SampleRepository.h"
+
 void SampleRepository::removeSamples(const juce::SparseSet<int> &rowIndexes) {
   auto numRowsToDelete = rowIndexes.size();
 

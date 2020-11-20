@@ -14,9 +14,21 @@ class SampleRepository {
 public:
   SampleRepository() = default;
   SampleInfos &getSampleInfos(int id) { return rows[id]; }
+  std::vector<SampleInfos> getSampleInfos(const juce::SparseSet<int>& idSet) {
+    std::vector<SampleInfos> samples;
+    for (auto i = 0; i < idSet.size(); ++i) {
+      auto rowId = idSet[i];
+      auto &sampleInfos = getSampleInfos(rowId);
+      samples.push_back(sampleInfos);
+    }
+    return samples;
+  }
 
+
+  //========================================================
+  // file management part
   void createSample(const juce::File &file) {
-    // TODO il faudrait checker si le reader peut l'ouvrir ptn
+    // TODO il faudrait checker si le reader peut l'ouvrir
     if (file.existsAsFile()) {
       addSample({file, kick, 0});
     }
@@ -30,6 +42,19 @@ public:
     }
   }
 
+  juce::String serialize() {
+    return std::accumulate(rows.begin(),
+                           rows.end(),
+                           juce::String(),
+                           [](juce::String a, const SampleInfos &row){
+                             return std::move(a) + row.serialize();
+                           });
+  }
+
+  //===========================================================
+  //model part
+
+  //TODO weird, a sample should be removed by its reference, tight coupling
   void removeSamples(const juce::SparseSet<int> &rowIndexes);
 
   [[nodiscard]] int getNumRows() const { return numRows; }
@@ -46,14 +71,8 @@ public:
 
   SampleType getSampleType(int row) { return rows[ids[row]].type; }
 
-  juce::String serialize() {
-    return std::accumulate(std::next(rows.begin()),
-                    rows.end(),
-                    rows[0].serialize(),
-                    [](juce::String a, const SampleInfos &row){
-                                         return std::move(a) + row.serialize();
-                                       });
-  }
+
+
 
 private:
   std::vector<int> ids;
@@ -67,5 +86,6 @@ private:
                                [&](auto &i) { return i == sampleToTest; });
   }
 
+  //TODO shouldn't even be there wtf
   static juce::String typeToString(SampleType type);
 };
