@@ -1,39 +1,19 @@
 #pragma once
 #include <optional>
 
-class Model : public juce::TableListBoxModel
+class Table : public juce::TableListBoxModel,
+              public juce::Component
 {
 public:
 
-  explicit Model(SamplePlayer & audio, SampleRepository& repo)
-      : audio(audio), repository(repo) {}
+  Table(SamplePlayer & audio, SampleRepository& repo);
 
-  int getNumRows() override { return repository.getNumRows(); }
+  void filesDropped(const juce::StringArray &fileNames);
 
-  void paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
-                          int /*height*/, bool rowIsSelected) override;
-
-  void paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
-                 int height, bool /*rowIsSelected*/) override;
-
-  void sortOrderChanged(int newSortColumnId, bool isForwards) override;
-
-  juce::Component *
-  refreshComponentForCell(int rowNumber, int columnId, bool /*isRowSelected*/,
-                          juce::Component *existingComponentToUpdate) override;
-
-  int getColumnAutoSizeWidth(int columnId) override;
-
-  void cellClicked(int rowNumber, int columnId,
-                   const juce::MouseEvent &) override;
   void deleteKeyPressed(int) override;
 
   SampleType getSampleType(int row) { return repository.getSampleType(row); }
   void setSampleType(int row, SampleType type) { repository.setSampleType(row, type); }
-
-  std::function<void()> onContentChanged;
-
-  void setTable(juce::TableListBox *newTable) { table = newTable; }
 
   auto getSelectedSamplesIfValid() -> std::optional<std::vector<SampleInfos>>
   {
@@ -57,64 +37,43 @@ public:
       return std::nullopt;
   }
 
-  void filesDropped(const juce::StringArray &fileNames);
+  void resized() override { table.setBounds(getLocalBounds()); }
 
 private:
-  juce::TableListBox* table = nullptr;
+  int getNumRows() override { return repository.getNumRows(); }
+
+  void paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
+                          int /*height*/, bool rowIsSelected) override;
+
+  void paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
+                 int height, bool /*rowIsSelected*/) override;
+
+  void sortOrderChanged(int newSortColumnId, bool isForwards) override;
+
+  juce::Component *
+  refreshComponentForCell(int rowNumber, int columnId, bool /*isRowSelected*/,
+                          juce::Component *existingComponentToUpdate) override;
+
+  int getColumnAutoSizeWidth(int columnId) override;
+
+  void cellClicked(int rowNumber, int columnId,
+                   const juce::MouseEvent &) override;
+
+  auto getSelectedRows() -> juce::SparseSet<int> {
+    return table.getSelectedRows();
+  }
+
+
+  juce::TableListBox table;
   SampleRepository& repository;
   SamplePlayer & audio;
 
-  auto getSelectedRows() -> juce::SparseSet<int> { 
-      jassert(table != nullptr);
-      return table->getSelectedRows();
-  }
 
-  //TODO not an ideal solution either, because
-  //1) I need to keep a reference to the table
-  //2) the header definition is still in the selectorComponent, there's some really tight coupling
-
-  //TODO at some point I need to find a way to completely abstract away the table
-};
-
-
-class SampleSelectorPanel : public juce::Component,
-                            public juce::FileDragAndDropTarget
-
-{
-public:
-  SampleSelectorPanel(juce::AudioDeviceManager &dm,
-                      SampleBufferCache &sl,
-                      SampleRepository &sr);
-
-  void resized() override;
-
-  //-------------------------------------------------------
-  void filesDropped(const juce::StringArray &files, int /*x*/,
-                    int /*y*/) override;
-
-  bool isInterestedInFileDrag(const juce::StringArray &files) override {
-    return true;
-  }
-
-  //-------------------------------------------------------
-  void setOnStartButtonClick(
-      const std::function<void(std::vector<SampleInfos> &&)> &action);
-
-private:
-  juce::TableListBox table; // the table component itself
-  juce::TextButton startButton{"Start"};
-  juce::Font font{14.0f};
-
-  SamplePlayer audio;
-  Model model;
-
-  friend class Model;
-  
   class SampleTypeCustomComponent : public Component {
   public:
-    explicit SampleTypeCustomComponent(Model &td)
+    explicit SampleTypeCustomComponent(Table &td)
         : owner(td) {
-        
+
       addAndMakeVisible(comboBox);
       comboBox.addItem("kick", SampleType::kick);
       comboBox.addItem("snare", SampleType::snare);
@@ -130,17 +89,46 @@ private:
       comboBox.setBoundsInset(juce::BorderSize<int>(2));
     }
 
-    void setRowAndColumn(int newRow, int newColumn) {
+    void setRowAndColumn(int newRow, int) {
       row = newRow;
       comboBox.setSelectedId(owner.getSampleType(row),
                              juce::dontSendNotification);
     }
 
   private:
-    Model &owner;
+    Table &owner;
     juce::ComboBox comboBox;
     int row{};
   };
+};
+
+
+class SampleSelectorPanel : public juce::Component,
+                            public juce::FileDragAndDropTarget
+
+{
+public:
+  SampleSelectorPanel(SamplePlayer& player,
+                      SampleRepository &sr);
+
+  void resized() override;
+
+  void filesDropped(const juce::StringArray &files, int /*x*/,
+                    int /*y*/) override;
+
+  bool isInterestedInFileDrag(const juce::StringArray &files) override {
+    return true;
+  }
+
+  void setOnStartButtonClick(
+      const std::function<void(std::vector<SampleInfos> &&)> &action);
+
+private:
+  juce::TextButton startButton{"Start"};
+  juce::Font font{14.0f};
+
+  SamplePlayer& audio;
+  Table table;
 
   static void showMissingSamplesDialog() {
     juce::AlertWindow::showMessageBoxAsync(

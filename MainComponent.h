@@ -23,14 +23,16 @@ using namespace juce;
 class MainComponent : public Component {
 public:
   //==============================================================================
-  MainComponent() {
-    mFormatManager.registerBasicFormats();
+  MainComponent()
+      : cache(formatManager),
+        samplePlayer{deviceManager, cache}
+  {
+    formatManager.registerBasicFormats();
     deviceManager.initialiseWithDefaultDevices(0, 2);
 
-    cache = std::make_unique<SampleBufferCache>(mFormatManager);
 
-    sampleSelector = std::make_unique<SampleSelectorPanel>(deviceManager, *cache, repository);
-    quizz = std::make_unique<QuizzComponent>(deviceManager, *cache);
+    sampleSelector = std::make_unique<SampleSelectorPanel>(samplePlayer, repository);
+    quizz = std::make_unique<QuizzComponent>(deviceManager, cache);
 
     sampleSelector->setOnStartButtonClick(
         [&](std::vector<SampleInfos> &&samples)
@@ -56,16 +58,18 @@ public:
   }
 
 private:
-  AudioFormatManager mFormatManager;
+  AudioFormatManager formatManager;
   juce::AudioDeviceManager deviceManager;
+
+  SampleRepository repository;
+  SampleBufferCache cache;
+  SamplePlayer samplePlayer;
 
   std::unique_ptr<SampleSelectorPanel> sampleSelector;
   std::unique_ptr<QuizzComponent> quizz;
 
   juce::WeakReference<Component> panelComponent;
 
-  SampleRepository repository;
-  std::unique_ptr<SampleBufferCache> cache;
 
   void showComponent(juce::Component *newPanel) {
     if (newPanel != panelComponent) {

@@ -10,7 +10,34 @@
 #include "../Samples/SamplePlayer.h"
 #include "SampleSelectorPanel.h"
 
-void Model::paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
+Table::Table(SamplePlayer &audio, SampleRepository &repo)
+    : audio(audio), repository(repo)
+{
+  table.setModel(this);
+
+  table.setColour(juce::ListBox::outlineColourId, juce::Colours::grey);
+  table.setOutlineThickness(1);
+  table.setMultipleSelectionEnabled(true);
+  table.setClickingTogglesRowSelection(true);
+
+
+  auto &header = table.getHeader();
+
+  header.addColumn("ID", 1, 40, 30, 40);
+  header.addColumn("path", 2, 100);
+  header.addColumn("name", 3, 150, 100);
+  header.addColumn("sample type", 4, 100, 75);
+  header.addColumn("rank", 5, 30);
+
+  // we could now change some initial settings..
+  header.setSortColumnId(1, true);
+  header.setColumnVisible(2, false);
+  header.setColumnVisible(5, false);
+
+  addAndMakeVisible(table);
+}
+
+void Table::paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
                                int /*height*/, bool rowIsSelected) {
   auto alternateColour =
       juce::Desktop::getInstance().getDefaultLookAndFeel()
@@ -23,7 +50,7 @@ void Model::paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
     g.fillAll(alternateColour);
 }
 
-void Model::paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
+void Table::paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
                       int height, bool /*rowIsSelected*/) {
   g.setColour(juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ListBox::textColourId));
   g.setFont(juce::Font());
@@ -40,34 +67,33 @@ void Model::paintCell(juce::Graphics &g, int rowNumber, int columnId, int width,
 }
 
 juce::Component *
-Model::refreshComponentForCell(int rowNumber, int columnId,
+Table::refreshComponentForCell(int rowNumber, int columnId,
                                bool /*isRowSelected*/,
                                juce::Component *existingComponentToUpdate) {
   if (columnId == 4) {
-    auto *ratingsBox =
-        dynamic_cast<SampleSelectorPanel::SampleTypeCustomComponent *>(
-            existingComponentToUpdate);
+    auto* ratingsBox = dynamic_cast<SampleTypeCustomComponent *>(existingComponentToUpdate);
 
     if (ratingsBox == nullptr)
-      ratingsBox =
-          new SampleSelectorPanel::SampleTypeCustomComponent(*this);
+      ratingsBox = new SampleTypeCustomComponent(*this);
 
     ratingsBox->setRowAndColumn(rowNumber, columnId);
     return ratingsBox;
-  } else // The ID and Length columns do not have a custom component
+  }
+  else // The ID and Length columns do not have a custom component
   {
     jassert(existingComponentToUpdate == nullptr);
     return nullptr;
   }
 }
 
-void Model::sortOrderChanged(int newSortColumnId, bool isForwards) {
+void Table::sortOrderChanged(int newSortColumnId, bool isForwards) {
   if (newSortColumnId != 0) {
     repository.sortByColumnId(newSortColumnId);
-    onContentChanged();
+    table.updateContent();
   }
 }
-int Model::getColumnAutoSizeWidth(int columnId) {
+
+int Table::getColumnAutoSizeWidth(int columnId) {
   int widest = 100;
 
   for (int i = getNumRows(); --i >= 0;) {
@@ -79,56 +105,34 @@ int Model::getColumnAutoSizeWidth(int columnId) {
   return widest + 8;
 }
 
-void Model::cellClicked(int rowNumber, int columnId, const juce::MouseEvent &) {
+void Table::cellClicked(int rowNumber, int columnId, const juce::MouseEvent &) {
 
   if (getSelectedRows().contains(rowNumber)) {
     auto &row = repository.getSampleInfos(rowNumber);
     audio.playSound(row);
   } else
     audio.stop();
-
 }
 
-void Model::deleteKeyPressed(int) {
+void Table::deleteKeyPressed(int) {
   audio.stopAndRelease();
   repository.removeSamples(getSelectedRows());
-  onContentChanged();
+  table.updateContent();
 }
 
 
-void Model::filesDropped(const juce::StringArray &fileNames) {
+void Table::filesDropped(const juce::StringArray &fileNames) {
   for(const auto& fileName : fileNames)
     repository.createSample(fileName);
+  table.updateContent();
 }
 
-SampleSelectorPanel::SampleSelectorPanel(juce::AudioDeviceManager &dm,
-                                         SampleBufferCache &sl,
-                                         SampleRepository &sr)
-    : audio(dm, sl), model(audio, sr) {
 
-  model.onContentChanged = [&]{ table.updateContent();};
-  model.setTable(&table);
-
-  table.setModel(&model);
-  table.setColour(juce::ListBox::outlineColourId, juce::Colours::grey);
-  table.setOutlineThickness(1);
-  table.setMultipleSelectionEnabled(true);
-  table.setClickingTogglesRowSelection(true);
+SampleSelectorPanel::SampleSelectorPanel(SamplePlayer& player,
+                                         SampleRepository& sr)
+    : audio(player), table(audio, sr) {
 
   addAndMakeVisible(table);
-
-  auto &header = table.getHeader();
-
-  header.addColumn("ID", 1, 40, 30, 40);
-  header.addColumn("path", 2, 100);
-  header.addColumn("name", 3, 150, 100);
-  header.addColumn("sample type", 4, 100, 75);
-  header.addColumn("rank", 5, 30);
-
-  // we could now change some initial settings..
-  header.setSortColumnId(1, true);
-  header.setColumnVisible(2, false);
-  header.setColumnVisible(5, false);
 
   addAndMakeVisible(startButton);
 }
@@ -136,8 +140,10 @@ SampleSelectorPanel::SampleSelectorPanel(juce::AudioDeviceManager &dm,
 void SampleSelectorPanel::resized() {
   auto bounds = getLocalBounds();
   bounds.reduce(8, 8);
+
   auto tableBounds = bounds.withTrimmedBottom(50);
   table.setBounds(tableBounds);
+
   auto startButtonBounds =
       bounds.withTrimmedTop(tableBounds.getHeight()).reduced(0, 8);
   startButton.setBounds(
@@ -146,15 +152,14 @@ void SampleSelectorPanel::resized() {
 
 void SampleSelectorPanel::filesDropped(const juce::StringArray &fileNames,
                                            int /*x*/, int /*y*/) {
-  model.filesDropped(fileNames);
-  table.updateContent();
+  table.filesDropped(fileNames);
 }
 
 void SampleSelectorPanel::setOnStartButtonClick(
     const std::function<void(std::vector<SampleInfos> &&)> &action) {
 
   startButton.onClick = [action, this] {
-    if (auto samples = model.getSelectedSamplesIfValid())
+    if (auto samples = table.getSelectedSamplesIfValid())
       action(std::move(*samples));
     else
       showMissingSamplesDialog();
