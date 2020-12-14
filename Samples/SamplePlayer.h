@@ -36,18 +36,21 @@ public:
     transportSource.setSource(nullptr);
     memorySource.reset();
 
-    // TODO faire une meilleure gestion des erreurs
-    auto sample = sampleLoader.getOrCreateSampleBuffer(sampleInfos);
+    if(auto sample = sampleLoader.getOrCreateSampleBuffer(sampleInfos)) {
 
-    memorySource =
-        std::make_unique<juce::MemoryAudioSource>(sample->buffer, false, false);
+      memorySource = std::make_unique<juce::MemoryAudioSource>(sample->buffer,
+                                                               false, false);
 
-    transportSource.setSource(memorySource.get(), 0, nullptr,
-                              sample->sourceSampleRate,
-                              sample->buffer.getNumChannels());
+      transportSource.setSource(memorySource.get(), 0, nullptr,
+                                sample->sourceSampleRate,
+                                sample->buffer.getNumChannels());
 
-    transportSource.setPosition(0);
-    transportSource.start();
+      transportSource.setPosition(0);
+      transportSource.start();
+    }
+    else
+      //cache should always return a valid buffer
+      jassertfalse;
   }
 
 private:

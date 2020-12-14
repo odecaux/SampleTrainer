@@ -1,31 +1,30 @@
 #pragma once
 
-struct SampleBuffer : public juce::ReferenceCountedObject {
-  typedef juce::ReferenceCountedObjectPtr<SampleBuffer> Ptr;
-
-  SampleBuffer(juce::File file, juce::AudioBuffer<float> &&buffer,
+struct SampleBuffer {
+  SampleBuffer(juce::AudioBuffer<float> &&buffer,
                const double d)
-      : file(std::move(file)), buffer(std::move(buffer)), sourceSampleRate(d) {}
+      : buffer(std::move(buffer)), sourceSampleRate(d) {}
 
-  const juce::File file;
   juce::AudioBuffer<float> buffer;
   double sourceSampleRate;
 };
+
+
+typedef std::shared_ptr<SampleBuffer> SampleBufferPtr;
+//TODO mettre des std::optional
 
 class SampleBufferCache {
 public:
   explicit SampleBufferCache(juce::AudioFormatManager &formatManager)
       : formatManager(formatManager) {}
 
-  SampleBuffer::Ptr getOrCreateSampleBuffer(const SampleInfos &sampleInfos);
+  SampleBufferPtr getOrCreateSampleBuffer(const SampleInfos &sampleInfos);
 
   void checkForSamplesToFree();
 
 private:
-  SampleBuffer::Ptr createBuffer(const SampleInfos &sampleInfos);
+  SampleBufferPtr createBuffer(const SampleInfos &sampleInfos);
 
-  int getFilePositionIfExists(const SampleInfos &infos);
-
-  juce::ReferenceCountedArray<SampleBuffer> sampleBuffers{};
+  std::unordered_map<juce::File, SampleBufferPtr> sampleBuffers{};
   juce::AudioFormatManager &formatManager;
 };

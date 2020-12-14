@@ -1,9 +1,11 @@
+#include <utility>
+
 #pragma once
 
 class MySamplerVoice {
 public:
   //==============================================================================
-  MySamplerVoice(SampleBuffer::Ptr sample, int targetNote)
+  MySamplerVoice(SampleBufferPtr sample, int targetNote)
       : sample(std::move(sample)), assignedNote(targetNote) {}
 
   ~MySamplerVoice() = default;
@@ -93,7 +95,7 @@ private:
 
   juce::AudioBuffer<float> tempBuffer;
 
-  SampleBuffer::Ptr sample;
+  SampleBufferPtr sample;
 
   double sourceSamplePosition = 0;
   bool isPlaying = false;
