@@ -9,7 +9,11 @@
 #include "Sequencer.h"
 
 #include "QuizzSource.h"
+
+#include "Game.h"
 #include "QuizzComponent.h"
+
+
 
 QuizzComponent::QuizzComponent(juce::AudioDeviceManager &dm,
                                         SampleBufferCache &cache)

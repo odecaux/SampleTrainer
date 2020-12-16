@@ -25,6 +25,6 @@ public:
 private:
   SampleBufferPtr createBuffer(const SampleInfos &sampleInfos);
 
-  std::unordered_map<juce::File, SampleBufferPtr> sampleBuffers{};
+  std::map<juce::File, SampleBufferPtr> sampleBuffers{};
   juce::AudioFormatManager &formatManager;
 };

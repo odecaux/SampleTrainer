@@ -1,15 +1,18 @@
-cmake_minimum_required(VERSION 3.12)
-
+cmake_minimum_required(VERSION 3.17)
 project(SAMPLE_TRAINER VERSION 0.0.1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS -EHsc)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_subdirectory(JUCE)
+#add_subdirectory(JUCE)
+find_package(Lager)
+find_package(Immer)
+find_package(Zug)
 
-juce_add_gui_app(SampleTrainer
-        PRODUCT_NAME "Sample Trainer")
+#[[
+
+juce_add_gui_app(SampleTrainer PRODUCT_NAME "Sample Trainer")
 
 target_sources(SampleTrainer PRIVATE
         Main.cpp
@@ -28,4 +31,10 @@ target_compile_definitions(SampleTrainer PRIVATE
 
 target_link_libraries(SampleTrainer PRIVATE
         juce::juce_gui_extra
-        juce::juce_audio_utils)
+        juce::juce_audio_utils
+        lager
+        immer
+        zug)
+
+add_subdirectory(Google-Tests)
+]]

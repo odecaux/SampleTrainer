@@ -1,6 +1,5 @@
 #pragma once
 
-
 // TODO separate component, midi/audio and game logic
 
 class QuizzComponent final : public juce::Component {

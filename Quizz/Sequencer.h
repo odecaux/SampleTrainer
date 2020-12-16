@@ -21,36 +21,44 @@ struct Sequence {
   void renderNextBlock(juce::MidiBuffer &midiMessages) {
     if (!isPlaying)
       return;
+
     int tempo = 85;
     double quarter = 60.0 / tempo;
     auto interval = static_cast<int>(quarter * sampleRate * 4 / subdivision);
     auto sequence_length = length * interval;
     auto reste = time + numSamples - sequence_length;
 
-    for (auto const &note : notes) {
+    for (auto const &note : notes)
+    {
       auto beatPlacement = note.position * interval;
-      // for each beat in list
-      if (beatPlacement >= time && beatPlacement < time + numSamples) {
-        auto timing = beatPlacement - time;
+
+
+      auto is_in_this_window = beatPlacement >= time && beatPlacement < time + numSamples;
+      auto is_in_wrapped_remain = reste > 0 && beatPlacement < reste;
+      auto should_play = is_in_this_window || is_in_wrapped_remain;
+
+      if(should_play)
+      {
+        int timing;
+        if (is_in_this_window)
+          timing = beatPlacement - time;
+        else
+          timing = beatPlacement + (sequence_length - time);
+
         midiMessages.addEvent(
             juce::MidiMessage::noteOn(1, 60 + note.type, (juce::uint8)127),
             timing);
         midiMessages.addEvent(
-            juce::MidiMessage::noteOff(1, 60 + note.type, 0.0f), timing + 100);
-      } else if ((reste > 0 && beatPlacement < reste)) {
-        auto timing = beatPlacement + (sequence_length - time);
-        midiMessages.addEvent(
-            juce::MidiMessage::noteOn(1, 60 + note.type, (juce::uint8)127),
-            timing);
-        midiMessages.addEvent(
-            juce::MidiMessage::noteOff(1, 60 + note.type, 0.0f), timing + 10);
+            juce::MidiMessage::noteOff(1, 60 + note.type, 0.0f),
+            timing + 10);
       }
     }
-
     time = (time + numSamples) % sequence_length;
   }
 
-  void play() { isPlaying = true; }
+  void play() {
+    isPlaying = true;
+  }
 
   void stop() {
     isPlaying = false;
