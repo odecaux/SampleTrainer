@@ -2,25 +2,29 @@
 
 #include <variant>
 #include <random>
-//#include <lager/util.hpp>
+#include <lager/util.hpp>
+#include <immer/flex_vector.hpp>
 
 #define assertm(exp, msg) assert(((void)msg, exp))
 
-//model state
-struct QuizzModel
+namespace Quizz
 {
-  struct Idle{};
-  struct Question{
-    int kick_index;
-    int snare_index;
-    int hats_index;
-  };
-  struct Pause{};
-  struct DisplayResults{};
+//state
+struct Idle{};
+struct Question{int kick_index; int snare_index; int hats_index;};
+struct Pause{};
+struct DisplayResults{};
 
-  typedef std::variant<Idle,Question,Pause,DisplayResults> StateType;
+typedef std::variant<Idle,
+                     Question,
+                     Pause,
+                     DisplayResults> StateType;
 
-
+//model
+struct model {
+  immer::flex_vector<SampleInfos> kicks;
+  immer::flex_vector<SampleInfos> snares;
+  immer::flex_vector<SampleInfos> hats;
 
   StateType type = Idle{};
   int correct_anwsers = 0;
@@ -30,21 +34,17 @@ struct QuizzModel
 //actions
 struct nextQuestion{};
 struct leaveQuizz{};
-struct answerQuestion{
-  int kick_index;
-  int snare_index;
-  int hats_index;
-};
+struct answerQuestion{int kick_index; int snare_index; int hats_index; };
 
-typedef std::variant<answerQuestion, nextQuestion, leaveQuizz>
-    quizzAction;
-
+typedef std::variant<answerQuestion,
+                     nextQuestion,
+                     leaveQuizz> quizzAction;
 
 //updates
-QuizzModel update(QuizzModel current, answerQuestion action)
+model update(model current, answerQuestion action)
 {
-  assertm(std::holds_alternative<QuizzModel::Question>(current.type), "invalid transition");
-  auto state = std::get<QuizzModel::Question>(current.type);
+  assertm(std::holds_alternative<Question>(current.type), "invalid transition");
+  auto state = std::get<Question>(current.type);
 
   if (action.hats_index == state.hats_index &&
       action.kick_index == state.kick_index &&
@@ -57,27 +57,29 @@ QuizzModel update(QuizzModel current, answerQuestion action)
     current.total_answers += 1;
   }
 
-  current.type = QuizzModel::Pause{};
+  current.type = Pause{};
   return current;
 }
 
-
-QuizzModel update(QuizzModel current, nextQuestion action)
+model update(model current, nextQuestion action)
 {
-  current.type = QuizzModel::Question{rand() % current.kick_count,
-                                      rand() % current.snare_count,
-                                      rand() % current.hats_count};
+  current.type =
+      Question{rand() % (int)current.kicks.size(),
+               rand() % (int)current.snares.size(),
+               rand() % (int)current.hats.size()};
   return  current;
 }
 
-QuizzModel update(QuizzModel current, leaveQuizz action)
+model update(model current, leaveQuizz action)
 {
-  current.type = QuizzModel::DisplayResults{};
+  current.type = DisplayResults{};
   return current;
 }
 
-QuizzModel update(QuizzModel current, quizzAction a)
+model update(model current, quizzAction a)
 {
-
   return std::visit([&] (auto a) { return update(current, a); }, a);
 }
+
+}
+
