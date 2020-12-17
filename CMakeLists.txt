@@ -5,12 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS -EHsc)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-#add_subdirectory(JUCE)
+add_subdirectory(JUCE)
 find_package(Lager)
 find_package(Immer)
 find_package(Zug)
-
-#[[
 
 juce_add_gui_app(SampleTrainer PRODUCT_NAME "Sample Trainer")
 
@@ -37,4 +35,3 @@ target_link_libraries(SampleTrainer PRIVATE
         zug)
 
 add_subdirectory(Google-Tests)
-]]
