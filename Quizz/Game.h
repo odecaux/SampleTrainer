@@ -2,14 +2,19 @@
 
 #include <variant>
 #include <random>
+#include <optional>
 #include <lager/util.hpp>
 #include <immer/flex_vector.hpp>
+#include <immer/box.hpp>
+#include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/comparison.hpp>
 
 #define assertm(exp, msg) assert(((void)msg, exp))
 
+
 namespace Quizz
 {
-//state
+
 struct Idle{};
 struct Question{int kick_index; int snare_index; int hats_index;};
 struct Pause{};
@@ -18,68 +23,65 @@ struct DisplayResults{};
 typedef std::variant<Idle,
                      Question,
                      Pause,
-                     DisplayResults> StateType;
+                     DisplayResults>
+        StepType;
 
-//model
-struct model {
-  immer::flex_vector<SampleInfos> kicks;
-  immer::flex_vector<SampleInfos> snares;
-  immer::flex_vector<SampleInfos> hats;
 
-  StateType type = Idle{};
+struct sampleContainer{
+  immer::box<std::vector<SampleInfos>> samples;
+  std::optional<int> selected_index;
+
+  [[nodiscard]] int size() const { return samples->size();}
+};
+
+
+struct Score{
   int correct_anwsers = 0;
   int total_answers = 0;
 };
 
+
+//model
+struct model {
+  sampleContainer kicks;
+  sampleContainer snares;
+  sampleContainer hats;
+
+  StepType type = Idle{};
+
+  Score score{};
+};
+
+model new_model(const std::vector<SampleInfos>&);
+
+
 //actions
 struct nextQuestion{};
-struct leaveQuizz{};
+struct selectSample{ SampleType type; int index; };
 struct answerQuestion{int kick_index; int snare_index; int hats_index; };
+struct leaveQuizz{};
 
-typedef std::variant<answerQuestion,
+typedef std::variant<selectSample,
+                     answerQuestion,
                      nextQuestion,
-                     leaveQuizz> quizzAction;
+                     leaveQuizz>
+    quizzAction;
 
-//updates
-model update(model current, answerQuestion action)
-{
-  assertm(std::holds_alternative<Question>(current.type), "invalid transition");
-  auto state = std::get<Question>(current.type);
+model changeSelectedSample(model, selectSample);
+model next(model, nextQuestion);
+model answer(model, answerQuestion);
+model leave(model);
+model update(model, quizzAction);
 
-  if (action.hats_index == state.hats_index &&
-      action.kick_index == state.kick_index &&
-      action.snare_index == state.snare_index) {
-
-    current.correct_anwsers += 1;
-    current.total_answers += 1;
-  }
-  else{
-    current.total_answers += 1;
-  }
-
-  current.type = Pause{};
-  return current;
+using boost::fusion::operator!=;
+using boost::fusion::operator==;
 }
 
-model update(model current, nextQuestion action)
-{
-  current.type =
-      Question{rand() % (int)current.kicks.size(),
-               rand() % (int)current.snares.size(),
-               rand() % (int)current.hats.size()};
-  return  current;
-}
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Idle)
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Question)
+BOOST_FUSION_ADAPT_STRUCT(Quizz::DisplayResults)
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Pause)
 
-model update(model current, leaveQuizz action)
-{
-  current.type = DisplayResults{};
-  return current;
-}
-
-model update(model current, quizzAction a)
-{
-  return std::visit([&] (auto a) { return update(current, a); }, a);
-}
-
-}
-
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Score, correct_anwsers, total_answers);
+BOOST_FUSION_ADAPT_STRUCT(Quizz::sampleContainer,samples, selected_index);
+BOOST_FUSION_ADAPT_STRUCT(Quizz::model, kicks, snares, hats, type, score);

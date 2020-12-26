@@ -1,13 +1,53 @@
 #pragma once
 
-// TODO separate component, midi/audio and game logic
+#include <utility>
+
+#include "QuizzSampleListComponent.h"
+#include <lager/store.hpp>
+
+class ScoreLabel : public juce::Component{
+public:
+  ScoreLabel(juce::String prefix_, lager::reader<int> score_ )
+  : prefix(std::move(prefix_)), score(std::move(score_))
+  {
+    score.watch([this](int newValue){
+      label.setText(prefix + juce::String{newValue}, juce::dontSendNotification);
+    });
+    label.setFont(juce::Font{});
+  }
+private:
+  juce::String prefix;
+  lager::reader<int> score;
+  juce::Label label;
+
+  void resized() override
+  {
+    label.setBounds(getLocalBounds());
+  }
+};
+
 
 class QuizzComponent final : public juce::Component {
-public:
-  explicit QuizzComponent(juce::AudioDeviceManager &dm,
-                          SampleBufferCache &cache);
 
-  ~QuizzComponent() override;
+  lager::reader<Quizz::model> game_model;
+  lager::reader<Quizz::StepType> step;
+  lager::context<Quizz::quizzAction> ctx;
+
+  QuizzSampleListComponent hats_list;
+  QuizzSampleListComponent snare_list;
+  QuizzSampleListComponent kick_list;
+
+  ScoreLabel total_score_label;
+  ScoreLabel current_score_label;
+
+  juce::TextButton answerButton{"Answer"};
+  juce::TextButton backButton{"Back"};
+
+public:
+  explicit QuizzComponent(lager::reader<Quizz::model> model_,
+                          lager::context<Quizz::quizzAction> ctx_);
+
+  ~QuizzComponent() override = default;
 
   //-------------------------------------------------------------------------------
 
@@ -15,104 +55,51 @@ public:
 
   void resized() override;
 
-  //-------------------------------------------------------------------------------
-
-  void addSamples(std::vector<SampleInfos> &&samples);
-
-  void play() { samplerSource.play(); }
-  void stop() { samplerSource.stop(); }
-
 private:
-  class SampleListModel : public juce::ListBoxModel {
-  public:
-    explicit SampleListModel(juce::Component &parent) : parent(parent) {}
 
-    SampleListModel() = delete;
+  void startGame(){
+    startNextQuestion();
+  }
 
-    void addSample(SampleInfos &sample) {
-      samples.push_back(std::move(sample));
-    }
-    int getNumRows() override { return samples.size(); }
+  void startNextQuestion(){
+    ctx.dispatch(Quizz::nextQuestion{});
+  }
 
-    void listBoxItemClicked(int row, const juce::MouseEvent &mouseEvent) override {
-      lastRow = row;
-    }
+  void answerClicked(){
+    if (game_model->kicks.selected_index != std::nullopt &&
+        game_model->snares.selected_index != std::nullopt &&
+        game_model->hats.selected_index != std::nullopt)
+      ctx.dispatch(
+          Quizz::answerQuestion{game_model->kicks.selected_index.value(),
+                                game_model->snares.selected_index.value(),
+                                game_model->hats.selected_index.value()});
+  }
 
-    void paintListBoxItem(int rowNumber, juce::Graphics &g, int width, int height,
-                          bool rowIsSelected) override {
+  void backPressed(){
+    ctx.dispatch(Quizz::leaveQuizz{});
+  }
 
-      auto alternateColour =
-          parent.getLookAndFeel()
-              .findColour(juce::ListBox::backgroundColourId)
-              .interpolatedWith(parent.getLookAndFeel().findColour(
-                                    juce::ListBox::textColourId),
-                                0.03f);
-      if (rowIsSelected)
-        g.fillAll(juce::Colours::lightblue);
-      else if (rowNumber % 2)
-        g.fillAll(alternateColour);
 
-      g.setColour(
-          parent.getLookAndFeel().findColour(juce::ListBox::textColourId));
-      g.setFont(font);
 
-      if (rowNumber < getNumRows()) {
-        auto cellText = samples[rowNumber].file.getFileName();
-        g.drawText(cellText, 2, 0, width - 4, height,
-                   juce::Justification::centredLeft, true);
-      }
-    }
+  void typeChanged(Quizz::StepType newType) {
+    std::visit(lager::visitor{
+                   [this](Quizz::Idle){},
+                   [this](Quizz::Question){},
+                   [this](Quizz::Pause){
+                     juce::AlertWindow::showMessageBoxAsync(
+                         juce::AlertWindow::NoIcon,
+                         "wsh", "test",
+                         "next", this,
+                         juce::ModalCallbackFunction::create([this](int){startNextQuestion();}));
+                   },
+                   [this](Quizz::DisplayResults){},
 
-    SampleInfos &getSelectedSample() {
-      jassert(lastRow != -1);
-      jassert(lastRow < samples.size());
-      return samples[lastRow];
-    }
-    SampleInfos &getSampleAt(int rowId) {
-      jassert(rowId >= 0 && rowId < samples.size());
-      return samples[rowId];
-    }
+    }, newType);
 
-  private:
-    int lastRow = -1;
-    std::vector<SampleInfos> samples{};
-    juce::Font font{14.0f};
-    juce::Component &parent;
-  };
+    if (std::holds_alternative<Quizz::Question>(newType))
+      answerButton.setVisible(true);
+    else
+      answerButton.setVisible(false);
+  }
 
-  class ModalReturn : public juce::ModalComponentManager::Callback {
-  public:
-    explicit ModalReturn(QuizzComponent &parent) : parent(parent) {}
-    QuizzComponent &parent;
-
-    void modalStateFinished(int returnValue) override { parent.nextQuestion(); }
-  };
-  juce::AudioSourcePlayer audioSourcePlayer;
-  QuizzSource samplerSource;
-  juce::AudioDeviceManager &deviceManager;
-  SampleBufferCache &cache;
-
-  juce::ListBox kickList;
-  juce::ListBox snareList;
-  juce::ListBox hatsList;
-  juce::TextButton answerButton{"answer"};
-
-  SampleListModel kickModel;
-  SampleListModel snareModel;
-  SampleListModel hatsModel;
-
-  SampleInfos *usedKick{};
-  SampleInfos *usedSnare{};
-  SampleInfos *usedHats{};
-
-  void initGame();
-
-  void checkAnswers();
-
-  void nextQuestion();
-
-  void endGame();
-
-  // TODO bouger dans samplersource, avec dm en paramètre
-  void setupMidi();
 };

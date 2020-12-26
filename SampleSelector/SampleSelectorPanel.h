@@ -24,12 +24,12 @@ public:
     audio.stopAndRelease();
 
     auto samples = repository.getSampleInfos(rowIds);
-    bool hasKick = std::ranges::any_of(
-        samples, [](auto &sample) { return sample.type == kick; });
-    bool hasSnare = std::ranges::any_of(
-        samples, [](auto &sample) { return sample.type == snare; });
-    bool hasHats = std::ranges::any_of(
-        samples, [](auto &sample) { return sample.type == hats; });
+    bool hasKick = std::any_of(
+        samples.begin(), samples.end(), [](auto &sample) { return sample.type == kick; });
+    bool hasSnare = std::any_of(
+        samples.begin(), samples.end(),  [](auto &sample) { return sample.type == snare; });
+    bool hasHats = std::any_of(
+        samples.begin(), samples.end(), [](auto &sample) { return sample.type == hats; });
 
     if (hasKick && hasSnare && hasHats)
       return samples;

@@ -19,7 +19,7 @@ void SampleRepository::removeSamples(const juce::SparseSet<int> &rowIndexes) {
 
   numRows = numRows - numRowsToDelete;
   ids = std::vector<int>(numRows);
-  std::ranges::generate(ids, [n = 0]() mutable { return n++; });
+  std::generate(ids.begin(), ids.end(), [n = 0]() mutable { return n++; });
   sortByColumn(currentSortingColumn);
 }
 
@@ -66,25 +66,25 @@ void SampleRepository::sortByColumn(Column columnToSortBy) {
 
   switch (columnToSortBy) {
   case Column::id:
-    std::ranges::sort(ids);
+    std::sort(ids.begin(), ids.end());
     break;
   case Column::path:
-    std::ranges::sort(ids, [this](int a, int b) {
+    std::sort(ids.begin(), ids.end(), [this](int a, int b) {
       return rows[a].getPath().compareNatural(rows[a].getPath());
     });
     break;
   case Column::name:
-    std::ranges::sort(ids, [this](int a, int b) {
+    std::sort(ids.begin(), ids.end(), [this](int a, int b) {
       return rows[a].getName().compareNatural(rows[a].getName());
     });
     break;
   case Column::type:
-    std::ranges::sort(
-        ids, [this](int a, int b) { return rows[a].type > rows[b].type; });
+    std::sort(
+        ids.begin(), ids.end(), [this](int a, int b) { return rows[a].type > rows[b].type; });
     break;
   case Column::rank:
-    std::ranges::sort(
-        ids, [this](int a, int b) { return rows[a].rank > rows[b].rank; });
+    std::sort(
+        ids.begin(), ids.end(), [this](int a, int b) { return rows[a].rank > rows[b].rank; });
     break;
   }
 }

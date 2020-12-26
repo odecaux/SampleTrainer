@@ -3,6 +3,9 @@
 #include <memory>
 #include <utility>
 
+#include <lager/event_loop/manual.hpp>
+#include <lager/reader.hpp>
+
 #include <juce_core/juce_core.h>
 
 #include "Samples/SampleInfos.h"
@@ -12,6 +15,7 @@
 
 #include "SampleSelector/SampleSelectorPanel.h"
 
+#include "Quizz/Game.h"
 #include "Quizz/SampleVoice.h"
 #include "Quizz/Sampler.h"
 #include "Quizz/Sequencer.h"
@@ -30,16 +34,10 @@ public:
     formatManager.registerBasicFormats();
     deviceManager.initialiseWithDefaultDevices(0, 2);
 
-
     sampleSelector = std::make_unique<SampleSelectorPanel>(samplePlayer, repository);
-    quizz = std::make_unique<QuizzComponent>(deviceManager, cache);
 
     sampleSelector->setOnStartButtonClick(
-        [&](std::vector<SampleInfos> &&samples)
-        {
-          showComponent(quizz.get());
-          quizz->addSamples(std::move(samples));
-        });
+      [&](std::vector<SampleInfos> &&samples) { showQuizz(std::move(samples)); });
 
     loadRepositoryFromDisk();
     showComponent(sampleSelector.get());
@@ -63,13 +61,27 @@ private:
 
   SampleRepository repository;
   SampleBufferCache cache;
-  SamplePlayer samplePlayer;
 
+  SamplePlayer samplePlayer;
   std::unique_ptr<SampleSelectorPanel> sampleSelector;
+
+  std::unique_ptr<QuizzPlayer> quizzPlayer;
   std::unique_ptr<QuizzComponent> quizz;
 
   juce::WeakReference<Component> panelComponent;
 
+  void showQuizz(std::vector<SampleInfos> &&samples)
+  {
+    auto store = lager::make_store<Quizz::quizzAction>(
+        Quizz::new_model(samples),
+        Quizz::update,
+        lager::with_manual_event_loop{});
+
+    quizzPlayer = std::make_unique<QuizzPlayer>(store, cache, deviceManager);
+    quizz = std::make_unique<QuizzComponent>(store, store);
+
+    showComponent(quizz.get());
+  }
 
   void showComponent(juce::Component *newPanel) {
     if (newPanel != panelComponent) {

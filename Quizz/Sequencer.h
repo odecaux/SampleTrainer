@@ -1,9 +1,22 @@
 #pragma once
+#include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/comparison.hpp>
 
 struct Note {
   SampleType type;
   int position;
 };
+
+
+struct sequenceSamples{
+  SampleInfos kick;
+  SampleInfos snare;
+  SampleInfos hats;
+};
+
+BOOST_FUSION_ADAPT_STRUCT(sequenceSamples, kick, snare, hats);
+using boost::fusion::operator==;
+using boost::fusion::operator!=;
 
 struct Sequence {
   Sequence(int subdivision, int length, std::vector<Note> &&notes)

@@ -1,63 +1,121 @@
 #pragma once
+#include <lager/lenses/unbox.hpp>
+
+
+
 
 class QuizzSource : public juce::AudioSource {
+
+  lager::reader<Quizz::model> model;
+  lager::reader<Quizz::StepType> step;
+
+  SampleBufferCache &cache;
+  MySampler sampler;
+
+  Sequence sequence;
+
+  int numSamples{};
+  double sampleRate{};
+  int time{};
 public:
-  QuizzSource() {
-    std::vector<Note> notes{
-        {kick, 0},  {snare, 4},
-        {kick, 7},  {kick, 8},  {snare, 12}};
+  explicit QuizzSource(lager::reader<Quizz::model> model_,
+                       SampleBufferCache &cache)
+      : model(model_),
+        step(model_[&Quizz::model::type]),
+        cache(cache),
+        sequence(16, 16, sequence_generator())
+  {
+    watch(step, [this](Quizz::StepType newStep){
+      if(std::holds_alternative<Quizz::Question>(newStep))
+      {
+        auto question = std::get<Quizz::Question>(newStep);
+        auto samplesToPlay = sequenceSamples{
+            model->kicks.samples.get()[question.kick_index],
+            model->snares.samples.get()[question.snare_index],
+            model->hats.samples.get()[question.hats_index],
+        };
+        sequence.play();
+        swapInstruments(samplesToPlay);
+        sequence.play();
+      }
+      else
+        sequence.stop();
+    });
 
-    //on génère des 16th de hats
-    std::vector<Note> hats(16);
-    std::ranges::generate(hats, [n = 0]()mutable { return Note{SampleType::hats, n++}; });
-    std::ranges::copy(hats, std::back_inserter(notes));
-
-    sequence = std::make_unique<Sequence>(Sequence{16, 16, std::move(notes)});
   }
+
   void prepareToPlay(int samplesPerBlockExpected,
                      double newSampleRate) override {
     sampleRate = newSampleRate;
     numSamples = samplesPerBlockExpected;
 
-    sequence->prepareToPlay(samplesPerBlockExpected, newSampleRate);
+    sequence.prepareToPlay(samplesPerBlockExpected, newSampleRate);
     sampler.setCurrentPlaybackSampleRate(newSampleRate);
-    midiCollector.reset(newSampleRate); // [10]
   }
 
   void getNextAudioBlock(const juce::AudioSourceChannelInfo &bufferToFill) override {
     bufferToFill.clearActiveBufferRegion();
 
     juce::MidiBuffer midiMessages;
-    // midiCollector.removeNextBlockOfMessages (midiMessages,
-    // bufferToFill.numSamples); // [11]
 
-    sequence->renderNextBlock(midiMessages);
+    sequence.renderNextBlock(midiMessages);
     sampler.renderNextBlock(*bufferToFill.buffer, midiMessages,
                             bufferToFill.startSample, bufferToFill.numSamples);
   }
 
   void releaseResources() override {}
 
-  void addSample(const SampleInfos &sampleInfos, SampleBufferCache &cache) {
-    auto buffer = cache.getOrCreateSampleBuffer(sampleInfos);
-    sampler.addVoice(new MySamplerVoice(buffer, 60 + sampleInfos.type));
-    mSampleCount++;
-  }
-
-  void clearSamples() { sampler.clearVoices(); }
-
-  juce::MidiMessageCollector &getMidiCollector() { return midiCollector; }
-
-  void play() { sequence->play(); }
-  void stop() { sequence->stop(); }
 
 private:
-  juce::MidiMessageCollector midiCollector;
-  MySampler sampler;
 
-  std::unique_ptr<Sequence> sequence;
-  int numSamples{};
-  double sampleRate{};
-  int mSampleCount{};
-  int time{};
+  void swapInstruments(const sequenceSamples& selectedSamples)
+  {
+    sampler.clearVoices();
+    setSamples(selectedSamples.hats);
+    setSamples(selectedSamples.snare);
+    setSamples(selectedSamples.kick);
+  }
+
+  void setSamples(const SampleInfos &sampleInfos) {
+    auto buffer = cache.getOrCreateSampleBuffer(sampleInfos);
+    sampler.addVoice(new MySamplerVoice(buffer, 60 + sampleInfos.type));
+  }
+
+
+  void play() { sequence.play(); }
+  void stop() { sequence.stop(); }
+
+  static std::vector<Note> sequence_generator()
+  {
+      std::vector<Note> notes{
+          {kick, 0},  {snare, 4},
+          {kick, 7},  {kick, 8},  {snare, 12}};
+
+      //on génère des 16th de hats
+      std::vector<Note> hats(16);
+      std::generate(hats.begin(), hats.end(), [n = 0]()mutable { return Note{SampleType::hats, n++}; });
+      std::copy(hats.begin(), hats.end(), std::back_inserter(notes));
+      return notes;
+  }
+};
+
+
+class QuizzPlayer{
+  juce::AudioDeviceManager &audioDeviceManager;
+  juce::AudioSourcePlayer audioSourcePlayer;
+  QuizzSource source;
+public:
+  QuizzPlayer(lager::reader<Quizz::model> model_, SampleBufferCache &cache,
+              juce::AudioDeviceManager &dm)
+      : audioDeviceManager(dm),
+        source(std::move(model_), cache)
+  {
+    audioDeviceManager.addAudioCallback(&audioSourcePlayer);
+    audioSourcePlayer.setSource(&source);
+  }
+
+  ~QuizzPlayer() {
+    audioSourcePlayer.setSource(nullptr);
+    audioDeviceManager.removeAudioCallback(&audioSourcePlayer);
+  }
 };

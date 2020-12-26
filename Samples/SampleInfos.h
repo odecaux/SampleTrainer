@@ -16,10 +16,7 @@ public:
       : type(type), file(std::move(file)), rank(rank) {
   }
 
-  SampleInfos(const SampleInfos &other)
-      : type(other.type), file(other.file), rank(other.rank)
-  {
-  }
+  SampleInfos(const SampleInfos &other) = default;
   SampleInfos(SampleInfos &&other) noexcept = default;
   SampleInfos &operator=(const SampleInfos &other) = default;
   SampleInfos &operator=(SampleInfos &&other) = default;
@@ -30,6 +27,7 @@ public:
   [[nodiscard]] juce::String getPath() const { return file.getFullPathName(); }
 
   bool operator==(const SampleInfos &other) const { return other.file == file; }
+  bool operator!=(const SampleInfos &other) const { return other.file != file; }
 
   juce::File file;
   SampleType type;

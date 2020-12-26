@@ -17,10 +17,13 @@ SampleBufferPtr SampleBufferCache::getOrCreateSampleBuffer(const SampleInfos &sa
 
 
 void SampleBufferCache::checkForSamplesToFree() {
-  std::erase_if(sampleBuffers, [](const auto& item) {
-    auto const& [key, value] = item;
-    return value.use_count() <= 2;
-  });
+/*  sampleBuffers.erase(std::remove_if(sampleBuffers.begin(),
+                                     sampleBuffers.end(),
+                                     [](const auto &item) {
+                                       auto const &[key, value] = item;
+                                       return value.use_count() <= 2;
+                                     }),
+                      sampleBuffers.end());*/
 }
 
 SampleBufferPtr SampleBufferCache::createBuffer(const SampleInfos &sampleInfos) {

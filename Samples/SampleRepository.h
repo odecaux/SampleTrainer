@@ -5,10 +5,6 @@
 //
 #pragma once
 
-// TODO le déplacer dans mainComponent
-// TODO séparer la gestion des Samples, de la gestion du ListBoxModel,
-// concrètement
-
 class SampleRepository {
 
 public:
@@ -82,7 +78,7 @@ private:
   Column currentSortingColumn{};
 
   bool existsInRepository(const SampleInfos &sampleToTest) {
-    return std::ranges::any_of(rows,
+    return std::any_of(rows.begin(), rows.end(),
                                [&](auto &i) { return i == sampleToTest; });
   }
 

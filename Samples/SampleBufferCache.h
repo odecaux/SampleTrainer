@@ -11,7 +11,6 @@ struct SampleBuffer {
 
 
 typedef std::shared_ptr<SampleBuffer> SampleBufferPtr;
-//TODO mettre des std::optional
 
 class SampleBufferCache {
 public:

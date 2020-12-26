@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(SAMPLE_TRAINER VERSION 0.0.1)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS -EHsc)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -18,7 +18,8 @@ target_sources(SampleTrainer PRIVATE
         Quizz/Sampler.cpp
         Samples/SampleRepository.cpp
         SampleSelector/SampleSelectorPanel.cpp
-        Quizz/QuizzComponent.cpp)
+        Quizz/QuizzComponent.cpp
+        Quizz/Game.cpp)
 
 target_compile_definitions(SampleTrainer PRIVATE
         JUCE_USE_MP3AUDIOFORMAT=1
