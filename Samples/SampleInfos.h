@@ -35,7 +35,7 @@ public:
 
   [[nodiscard]] juce::String serialize() const {
     juce::String out;
-    out << "\"" << getPath() << "\"," << type << "," << rank;
+    out << "\"" << getPath() << "\"," << type << "," << rank << "\n";
     return out;
   }
 

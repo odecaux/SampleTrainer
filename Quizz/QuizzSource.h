@@ -25,7 +25,18 @@ public:
         cache(cache),
         sequence(16, 16, sequence_generator())
   {
+    //TODO reecrire tout ça, c'est super nul
     watch(step, [this](Quizz::StepType newStep){
+      if(std::holds_alternative<Quizz::Auditioning>(newStep))
+      {
+        auto samplesToPlay = sequenceSamples{
+            model->kicks.samples.get()[model->kicks.selected_index.value_or(0)],
+            model->snares.samples.get()[model->snares.selected_index.value_or(0)],
+            model->hats.samples.get()[model->hats.selected_index.value_or(0)],
+        };
+        swapInstruments(samplesToPlay);
+        sequence.play();
+      }
       if(std::holds_alternative<Quizz::Question>(newStep))
       {
         auto question = std::get<Quizz::Question>(newStep);
@@ -34,7 +45,7 @@ public:
             model->snares.samples.get()[question.snare_index],
             model->hats.samples.get()[question.hats_index],
         };
-        sequence.play();
+        sequence.stop();
         swapInstruments(samplesToPlay);
         sequence.play();
       }

@@ -30,21 +30,23 @@ model new_model(const std::vector<SampleInfos>& samples)
   };
 }
 
-model changeSelectedSample(model current, struct selectSample action)
-{
-  assertm(std::holds_alternative<Question>(current.type), "invalid transition");
 
-  if(action.type == SampleType::kick)
-    current.kicks.selected_index = action.index;
-  else if(action.type == SampleType::snare)
-    current.snares.selected_index = action.index;
+model changeSelectedSample(model current, selectSample action)
+{
+  auto index = action.index;
+
+
+  if(action.type == SampleType::kick) {
+    current.kicks.selected_index = index;
+  } else if(action.type == SampleType::snare)
+    current.snares.selected_index = index;
   else if(action.type == SampleType::hats)
-    current.hats.selected_index = action.index;
+    current.hats.selected_index = index;
 
   return current;
 }
 
-model answer(model current, struct answerQuestion action)
+model answer(model current, answerQuestion action)
 {
   assertm(std::holds_alternative<Question>(current.type), "invalid transition");
   auto state = std::get<Question>(current.type);
@@ -81,7 +83,13 @@ model next(model current)
 model update(model c, quizzAction a)
 {
   return std::visit(lager::visitor{
-          [&](struct selectSample a) { return changeSelectedSample(c, a); },
+          [&](struct selectSample a) {
+                       if (std::holds_alternative<Auditioning>(c.type) ||
+                           std::holds_alternative<Question>(c.type))
+                         return changeSelectedSample(c, a);
+                       else
+                         assert(false);
+           },
           [&](struct answerQuestion a) { return answer(c, a); },
           [&](struct nextQuestion) { return next(c); },
           [&](struct leaveQuizz) {

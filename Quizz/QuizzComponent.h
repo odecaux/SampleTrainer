@@ -8,12 +8,15 @@
 class ScoreLabel : public juce::Component{
 public:
   ScoreLabel(juce::String prefix_, lager::reader<int> score_ )
-  : prefix(std::move(prefix_)), score(std::move(score_))
+  : prefix(std::move(prefix_)),
+        score(std::move(score_))
   {
     score.watch([this](int newValue){
       label.setText(prefix + juce::String{newValue}, juce::dontSendNotification);
     });
     label.setFont(juce::Font{});
+    label.setText(prefix + juce::String{score.get()}, juce::dontSendNotification);
+    addAndMakeVisible(label);
   }
 private:
   juce::String prefix;
@@ -40,8 +43,10 @@ class QuizzComponent final : public juce::Component {
   ScoreLabel total_score_label;
   ScoreLabel current_score_label;
 
+  juce::TextButton startButton{"Start"};
   juce::TextButton answerButton{"Answer"};
   juce::TextButton backButton{"Back"};
+
 
 public:
   explicit QuizzComponent(lager::reader<Quizz::model> model_,
@@ -57,7 +62,7 @@ public:
 
 private:
 
-  void startGame(){
+  void startClicked(){
     startNextQuestion();
   }
 
@@ -79,12 +84,20 @@ private:
     ctx.dispatch(Quizz::leaveQuizz{});
   }
 
-
-
   void typeChanged(Quizz::StepType newType) {
     std::visit(lager::visitor{
-                   [this](Quizz::Idle){},
-                   [this](Quizz::Question){},
+                   [this](Quizz::Auditioning){
+                     current_score_label.setVisible(false);
+                     total_score_label.setVisible(false);
+                     startButton.setVisible(true);
+                     answerButton.setVisible(false);
+                   },
+                   [this](Quizz::Question){
+                     current_score_label.setVisible(true);
+                     total_score_label.setVisible(true);
+                     startButton.setVisible(false);
+                     answerButton.setVisible(true);
+                   },
                    [this](Quizz::Pause){
                      juce::AlertWindow::showMessageBoxAsync(
                          juce::AlertWindow::NoIcon,
@@ -92,7 +105,12 @@ private:
                          "next", this,
                          juce::ModalCallbackFunction::create([this](int){startNextQuestion();}));
                    },
-                   [this](Quizz::DisplayResults){},
+                   [this](Quizz::DisplayResults){
+                     current_score_label.setVisible(true);
+                     total_score_label.setVisible(true);
+                     startButton.setVisible(false);
+                     answerButton.setVisible(false);
+                   },
 
     }, newType);
 

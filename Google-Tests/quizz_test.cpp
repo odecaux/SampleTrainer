@@ -1,6 +1,6 @@
 
 #include <juce_gui_extra/juce_gui_extra.h>
-#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 
 #include "../Samples/SampleInfos.h"
 #include "../Quizz/Sequencer.h"
@@ -14,7 +14,7 @@ using namespace Quizz;
 TEST(testQuizzModel, model_init)
 {
   auto model = Quizz::model{};
-  ASSERT_TRUE(std::holds_alternative<Idle>(model.type));
+  ASSERT_TRUE(std::holds_alternative<Auditioning>(model.type));
   ASSERT_EQ(model.score.correct_anwsers,0);
   ASSERT_EQ(model.score.total_answers,0);
 }
@@ -145,7 +145,7 @@ TEST(testLager, mapSimple)
   auto index = lager::make_state(0);
   auto vec = lager::make_state(0.1f);
   auto x = with(index, vec).xform(zug::map(
-      [](int a, float b) { return a + b; })).make();
+      [](int a, float b) { return static_cast<float>(a) + b; })).make();
   ASSERT_FLOAT_EQ(x.get(), 0.1f);
 }
 TEST(testLager, mapIndex)
@@ -202,6 +202,49 @@ static lager::reader<std::optional<sequenceSamples>> toSelected(const lager::rea
         else
           return std::nullopt;
       }));
+}
+
+TEST(quizzTest, optional){
+
+  using namespace lager;
+  auto cont = make_state(sampleContainer{}, automatic_tag{});
+  auto index = cont[&Quizz::sampleContainer::selected_index].make();
+
+
+  ASSERT_EQ(*index, std::nullopt);
+  int changed = 0;
+  watch(index, [&changed](auto...){
+    changed++;
+  });
+
+  index.set(std::nullopt);
+  index.set(1);
+  ASSERT_EQ(changed, 1);
+
+}
+
+TEST(quizzTest, next_optional_bug)
+{
+  using namespace lager;
+
+  auto vec = sampleContainer{{SampleInfos{{}, {}, {}}, SampleInfos{{}, {}, {}}}};
+
+  auto model = Quizz::model{vec, vec, vec };
+
+  auto store = make_store<Quizz::quizzAction>(model, Quizz::update, with_manual_event_loop{});
+
+  int count = 0;
+
+  reader<std::optional<int>> watcher = store[&Quizz::model::kicks][&Quizz::sampleContainer::selected_index];
+  watch(watcher, [&count](auto & it) { if(it ==0) count++; });
+
+  ASSERT_EQ(store->kicks.selected_index, std::nullopt);
+  store.dispatch(Quizz::nextQuestion{});
+  ASSERT_EQ(store->kicks.selected_index, std::nullopt);
+  store.dispatch(Quizz::selectSample{kick, 0});
+  ASSERT_EQ(store->kicks.selected_index, 0);
+
+  ASSERT_EQ(count, 1);
 }
 
 

@@ -2,23 +2,26 @@
 // Created by Octave on 18/12/2020.
 //
 #include <lager/cursor.hpp>
+#include <utility>
 #include <lager/watch.hpp>
 #include <lager/context.hpp>
 
 class QuizzSampleListComponent : public juce::Component,
                                  public juce::ListBoxModel
 {
-  lager::reader<Quizz::sampleContainer> model_;
+  lager::reader<std::vector<SampleInfos>> samples;
+  lager::reader<std::optional<int>> index_;
   lager::context<Quizz::selectSample> ctx_;
   juce::ListBox listBox;
 
 public:
-  QuizzSampleListComponent(lager::reader<Quizz::sampleContainer> model,
+  QuizzSampleListComponent(lager::reader<std::vector<SampleInfos>> samples,
+                           lager::reader<std::optional<int>> index,
                            lager::context<Quizz::selectSample> ctx)
-      : model_(std::move(model)),
+      : samples(std::move(samples)), index_(std::move(index)),
         ctx_(std::move(ctx))
   {
-    model_.watch([this](auto&&...){
+    watch(index_, [this](std::optional<int> new_index){
       listBox.updateContent();
       repaint();
     });
@@ -34,11 +37,13 @@ private:
     listBox.setBounds(getLocalBounds());
   }
 
-  int getNumRows() override {return model_->size();}
+  int getNumRows() override {return samples->size();}
 
   void listBoxItemClicked(int row, const juce::MouseEvent &mouseEvent) override
   {
-    ctx_.dispatch(Quizz::selectSample{ model_->samples.get()[row].type, row });
+    auto prev = *index_;
+    ctx_.dispatch(Quizz::selectSample{ samples.get()[row].type, row });
+    std::cout<< (prev != *index_) <<std::endl;
   }
 
   void paintListBoxItem(int rowNumber, juce::Graphics &g, int width, int height,
@@ -51,8 +56,8 @@ private:
             .interpolatedWith(
                 getLookAndFeel().findColour(juce::ListBox::textColourId),
                 0.03f);
-    DBG(model_->selected_index.value_or(-1));
-    if (model_->selected_index == rowNumber)
+
+    if (*index_ == rowNumber)
       g.fillAll(juce::Colours::lightblue);
     else if (rowNumber % 2)
       g.fillAll(alternateColour);
@@ -61,7 +66,7 @@ private:
     g.setFont(juce::Font{});
 
     if (rowNumber < getNumRows()) {
-      auto cellText = model_->samples.get()[rowNumber].file.getFileName();
+      auto cellText = samples.get()[rowNumber].file.getFileName();
       g.drawText(cellText, 2, 0, width - 4, height,
                  juce::Justification::centredLeft, true);
     }

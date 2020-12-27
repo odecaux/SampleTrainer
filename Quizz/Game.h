@@ -15,12 +15,12 @@
 namespace Quizz
 {
 
-struct Idle{};
+struct Auditioning {};
 struct Question{int kick_index; int snare_index; int hats_index;};
 struct Pause{};
 struct DisplayResults{};
 
-typedef std::variant<Idle,
+typedef std::variant<Auditioning,
                      Question,
                      Pause,
                      DisplayResults>
@@ -29,7 +29,8 @@ typedef std::variant<Idle,
 
 struct sampleContainer{
   immer::box<std::vector<SampleInfos>> samples;
-  std::optional<int> selected_index;
+  //TODO hardcoded, bizarre
+  std::optional<int> selected_index = 0;
 
   [[nodiscard]] int size() const { return samples->size();}
 };
@@ -47,7 +48,7 @@ struct model {
   sampleContainer snares;
   sampleContainer hats;
 
-  StepType type = Idle{};
+  StepType type = Auditioning{};
 
   Score score{};
 };
@@ -67,17 +68,14 @@ typedef std::variant<selectSample,
                      leaveQuizz>
     quizzAction;
 
-model changeSelectedSample(model, selectSample);
-model next(model, nextQuestion);
 model answer(model, answerQuestion);
-model leave(model);
 model update(model, quizzAction);
 
 using boost::fusion::operator!=;
 using boost::fusion::operator==;
 }
 
-BOOST_FUSION_ADAPT_STRUCT(Quizz::Idle)
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Auditioning)
 BOOST_FUSION_ADAPT_STRUCT(Quizz::Question)
 BOOST_FUSION_ADAPT_STRUCT(Quizz::DisplayResults)
 BOOST_FUSION_ADAPT_STRUCT(Quizz::Pause)
