@@ -45,7 +45,7 @@ void Table::paintRowBackground(juce::Graphics &g, int rowNumber, int /*width*/,
           .interpolatedWith(
               juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ListBox::textColourId), 0.03f);
   if (rowIsSelected)
-    g.fillAll(juce::Colours::lightblue);
+    g.fillAll(juce::Colours::cadetblue);
   else if (rowNumber % 2)
     g.fillAll(alternateColour);
 }

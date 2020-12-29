@@ -73,7 +73,7 @@ private:
   void showQuizz(std::vector<SampleInfos> &&samples)
   {
     auto store = lager::make_store<Quizz::quizzAction>(
-        Quizz::new_model(samples),
+        Quizz::model::new_model(samples),
         Quizz::update,
         lager::with_manual_event_loop{});
 

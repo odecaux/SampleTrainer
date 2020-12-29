@@ -4,9 +4,6 @@ Simple app I made to memorize drum samples in a groove context.
 TODO:
 
 high priority/easy : \
-add selected_index to Question state\
-score label\
-An intermediate state to properly audition the samples.\
 rework the symbols/namespace and imports\
 "Add Folder", "Add Files", "Remove Sample" buttons.\
 

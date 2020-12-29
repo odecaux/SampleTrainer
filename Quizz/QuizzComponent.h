@@ -12,13 +12,15 @@ public:
         score(std::move(score_))
   {
     score.watch([this](int newValue){
-      label.setText(prefix + juce::String{newValue}, juce::dontSendNotification);
+      draw(newValue);
     });
-    label.setFont(juce::Font{});
-    label.setText(prefix + juce::String{score.get()}, juce::dontSendNotification);
+    draw(*score);
     addAndMakeVisible(label);
   }
 private:
+  void draw(int value){
+    label.setText(prefix + juce::String{score.get()}, juce::dontSendNotification);
+  }
   juce::String prefix;
   lager::reader<int> score;
   juce::Label label;
@@ -34,6 +36,7 @@ class QuizzComponent final : public juce::Component {
 
   lager::reader<Quizz::model> game_model;
   lager::reader<Quizz::StepType> step;
+  lager::reader<size_t> step_index;
   lager::context<Quizz::quizzAction> ctx;
 
   QuizzSampleListComponent hats_list;
@@ -47,6 +50,7 @@ class QuizzComponent final : public juce::Component {
   juce::TextButton answerButton{"Answer"};
   juce::TextButton backButton{"Back"};
 
+  juce::Label title;
 
 public:
   explicit QuizzComponent(lager::reader<Quizz::model> model_,
@@ -54,35 +58,20 @@ public:
 
   ~QuizzComponent() override = default;
 
-  //-------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
 
   void paint(juce::Graphics &g) override {}
 
   void resized() override;
 
 private:
+  void startClicked() { startNextQuestion(); }
 
-  void startClicked(){
-    startNextQuestion();
-  }
+  void startNextQuestion() { ctx.dispatch(Quizz::nextQuestion{}); }
 
-  void startNextQuestion(){
-    ctx.dispatch(Quizz::nextQuestion{});
-  }
+  void answerClicked(){ ctx.dispatch(Quizz::answerQuestion{}); }
 
-  void answerClicked(){
-    if (game_model->kicks.selected_index != std::nullopt &&
-        game_model->snares.selected_index != std::nullopt &&
-        game_model->hats.selected_index != std::nullopt)
-      ctx.dispatch(
-          Quizz::answerQuestion{game_model->kicks.selected_index.value(),
-                                game_model->snares.selected_index.value(),
-                                game_model->hats.selected_index.value()});
-  }
-
-  void backPressed(){
-    ctx.dispatch(Quizz::leaveQuizz{});
-  }
+  void backPressed() { ctx.dispatch(Quizz::leaveQuizz{}); }
 
   void typeChanged(Quizz::StepType newType) {
     std::visit(lager::visitor{
@@ -114,10 +103,6 @@ private:
 
     }, newType);
 
-    if (std::holds_alternative<Quizz::Question>(newType))
-      answerButton.setVisible(true);
-    else
-      answerButton.setVisible(false);
   }
 
 };

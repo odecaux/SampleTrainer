@@ -1,5 +1,6 @@
 
 #include <lager/lenses/unbox.hpp>
+#include <lager/lenses/variant.hpp>
 #include "juce_audio_utils/juce_audio_utils.h"
 
 #include "../Samples/SampleInfos.h"
@@ -12,26 +13,42 @@ QuizzComponent::QuizzComponent(lager::reader<Quizz::model> model_,
     :
       game_model{std::move(model_)},
       step{game_model[&Quizz::model::type]},
+      step_index(step.xform(zug::map([](auto s){return s.index();}))),
       ctx(std::move(ctx_)),
 
-      hats_list(
-          game_model[&Quizz::model::hats][&Quizz::sampleContainer::samples]
-                    [lager::lenses::unbox],
-          game_model[&Quizz::model::hats]
-                    [&Quizz::sampleContainer::selected_index],
-          ctx),
-      snare_list(
-          game_model[&Quizz::model::snares][&Quizz::sampleContainer::samples]
-          [lager::lenses::unbox],
-          game_model[&Quizz::model::snares]
-          [&Quizz::sampleContainer::selected_index],
-          ctx),
-      kick_list(
-          game_model[&Quizz::model::kicks][&Quizz::sampleContainer::samples]
-          [lager::lenses::unbox],
-          game_model[&Quizz::model::kicks]
-          [&Quizz::sampleContainer::selected_index],
-          ctx),
+      hats_list(game_model[&Quizz::model::hats][lager::lenses::unbox],
+                game_model[&Quizz::model::type].xform(
+                    zug::map([](auto &&t) -> std::optional<int> {
+                      if (std::holds_alternative<Quizz::Auditioning>(t))
+                        return std::get<Quizz::Auditioning>(t).hats_index;
+                      else if (std::holds_alternative<Quizz::Question>(t))
+                        return std::get<Quizz::Question>(t).answer_hats_index;
+                      else
+                        return std::nullopt;
+                    })),
+                ctx),
+      snare_list(game_model[&Quizz::model::snares][lager::lenses::unbox],
+                 game_model[&Quizz::model::type].xform(
+                     zug::map([](auto &&t) -> std::optional<int> {
+                       if (std::holds_alternative<Quizz::Auditioning>(t))
+                         return std::get<Quizz::Auditioning>(t).snare_index;
+                       else if (std::holds_alternative<Quizz::Question>(t))
+                         return std::get<Quizz::Question>(t).answer_snare_index;
+                       else
+                         return std::nullopt;
+                     })),
+                 ctx),
+      kick_list(game_model[&Quizz::model::kicks][lager::lenses::unbox],
+                game_model[&Quizz::model::type].xform(
+                    zug::map([](auto &&t) -> std::optional<int> {
+                      if (std::holds_alternative<Quizz::Auditioning>(t))
+                        return std::get<Quizz::Auditioning>(t).kick_index;
+                      else if (std::holds_alternative<Quizz::Question>(t))
+                        return std::get<Quizz::Question>(t).answer_kick_index;
+                      else
+                        return std::nullopt;
+                    })),
+                ctx),
 
       current_score_label(
           "correct : ",
@@ -40,27 +57,49 @@ QuizzComponent::QuizzComponent(lager::reader<Quizz::model> model_,
           "total : ",
           game_model[&Quizz::model::score][&Quizz::Score::total_answers]) {
 
-    addAndMakeVisible(kick_list);
-    addAndMakeVisible(snare_list);
-    addAndMakeVisible(hats_list);
+  addAndMakeVisible(title);
+  title.setJustificationType(juce::Justification::centred);
+  title.setFont(juce::Font{15});
 
-    addAndMakeVisible(startButton);
-    addChildComponent(answerButton);
-    addAndMakeVisible(backButton);
+  addChildComponent(current_score_label);
+  addChildComponent(total_score_label);
+  addAndMakeVisible(kick_list);
+  addAndMakeVisible(snare_list);
+  addAndMakeVisible(hats_list);
 
-    addChildComponent(current_score_label);
-    addChildComponent(total_score_label);
+  addAndMakeVisible(startButton);
+  addChildComponent(answerButton);
+  addAndMakeVisible(backButton);
 
-    startButton.onClick = [this] { startClicked(); };
+  startButton.onClick = [this] { startClicked(); };
     answerButton.onClick = [this] { answerClicked(); };
     backButton.onClick = [this] { backPressed(); };
 
     watch(step, [this](Quizz::StepType newType) { typeChanged(newType); });
+
+    auto title_update = [this](size_t index){
+      //TODO dependency
+      if(index == 0)
+        title.setText("Listen to the samples", juce::dontSendNotification);
+      else if(index == 1)
+        title.setText("Identify the samples", juce::dontSendNotification);
+      else if(index == 3)
+        title.setText("", juce::dontSendNotification);
+    };
+    watch(step_index, title_update);
+    title_update(*step_index);
 }
 
 void QuizzComponent::resized()
 {
-  auto bounds = getLocalBounds().reduced(10);
+  auto totalBounds = getLocalBounds().reduced(10);
+
+  auto titleHeight = 30;
+
+  auto titleBounds = totalBounds.withHeight(titleHeight);
+  title.setBounds(titleBounds);
+
+  auto bounds = totalBounds.withTrimmedTop(titleHeight);
 
   int bottomHeight = 40;
   int topHeight = 30;

@@ -1,64 +1,41 @@
 #pragma once
 #include <lager/lenses/unbox.hpp>
+#include <lager/lenses/variant.hpp>
 
 
 
 
 class QuizzSource : public juce::AudioSource {
 
+
   lager::reader<Quizz::model> model;
   lager::reader<Quizz::StepType> step;
+  lager::reader<size_t> step_index;
+  lager::reader<std::optional<Quizz::Auditioning>> auditioning;
 
   SampleBufferCache &cache;
   MySampler sampler;
 
   Sequence sequence;
-
-  int numSamples{};
-  double sampleRate{};
-  int time{};
 public:
   explicit QuizzSource(lager::reader<Quizz::model> model_,
                        SampleBufferCache &cache)
-      : model(model_),
-        step(model_[&Quizz::model::type]),
+      : model(std::move(model_)),
+        step(model[&Quizz::model::type]),
+        step_index(step.xform(zug::map([](auto s) { return s.index();}))),
+        auditioning(step[lager::lenses::alternative<Quizz::Auditioning>]),
         cache(cache),
         sequence(16, 16, sequence_generator())
   {
-    //TODO reecrire tout ça, c'est super nul
-    watch(step, [this](Quizz::StepType newStep){
-      if(std::holds_alternative<Quizz::Auditioning>(newStep))
-      {
-        auto samplesToPlay = sequenceSamples{
-            model->kicks.samples.get()[model->kicks.selected_index.value_or(0)],
-            model->snares.samples.get()[model->snares.selected_index.value_or(0)],
-            model->hats.samples.get()[model->hats.selected_index.value_or(0)],
-        };
-        swapInstruments(samplesToPlay);
-        sequence.play();
-      }
-      if(std::holds_alternative<Quizz::Question>(newStep))
-      {
-        auto question = std::get<Quizz::Question>(newStep);
-        auto samplesToPlay = sequenceSamples{
-            model->kicks.samples.get()[question.kick_index],
-            model->snares.samples.get()[question.snare_index],
-            model->hats.samples.get()[question.hats_index],
-        };
-        sequence.stop();
-        swapInstruments(samplesToPlay);
-        sequence.play();
-      }
-      else
-        sequence.stop();
-    });
+    step_index.watch([this](auto index){updateIndex(index);});
+    auditioning.watch([this](auto state){ updateAuditionState(state);});
 
+    updateIndex(step_index.get());
+    updateAuditionState(auditioning.get());
   }
 
   void prepareToPlay(int samplesPerBlockExpected,
                      double newSampleRate) override {
-    sampleRate = newSampleRate;
-    numSamples = samplesPerBlockExpected;
 
     sequence.prepareToPlay(samplesPerBlockExpected, newSampleRate);
     sampler.setCurrentPlaybackSampleRate(newSampleRate);
@@ -79,6 +56,41 @@ public:
 
 private:
 
+  void updateIndex(size_t index){
+    //TODO hidden dependency
+    if( index == 0) {
+      sequence.play();
+    }
+    if (index == 1) {
+      auto question = std::get<Quizz::Question>(*step);
+      auto samplesToPlay = sequenceSamples{
+          model->kicks.get()[question.question_kick_index],
+          model->snares.get()[question.question_snare_index],
+          model->hats.get()[question.question_hats_index],
+      };
+      sequence.stop();
+      swapInstruments(samplesToPlay);
+      sequence.play();
+    } else
+      sequence.stop();
+  }
+
+  void updateAuditionState(std::optional<Quizz::Auditioning> state){
+    if(state)
+    {
+      auto samplesToPlay = sequenceSamples{
+          model->kicks.get()[state->kick_index],
+          model->snares.get()[state->snare_index],
+          model->hats.get()[state->hats_index]
+      };
+      swapInstruments(samplesToPlay);
+      if(state->playing)
+        sequence.play();
+      else
+        sequence.stop();
+    }
+  }
+
   void swapInstruments(const sequenceSamples& selectedSamples)
   {
     sampler.clearVoices();
@@ -92,9 +104,6 @@ private:
     sampler.addVoice(new MySamplerVoice(buffer, 60 + sampleInfos.type));
   }
 
-
-  void play() { sequence.play(); }
-  void stop() { sequence.stop(); }
 
   static std::vector<Note> sequence_generator()
   {

@@ -58,7 +58,7 @@ private:
                 0.03f);
 
     if (*index_ == rowNumber)
-      g.fillAll(juce::Colours::lightblue);
+      g.fillAll(juce::Colours::cadetblue);
     else if (rowNumber % 2)
       g.fillAll(alternateColour);
 
@@ -66,7 +66,7 @@ private:
     g.setFont(juce::Font{});
 
     if (rowNumber < getNumRows()) {
-      auto cellText = samples.get()[rowNumber].file.getFileName();
+      auto cellText = samples.get()[rowNumber].file.getFileNameWithoutExtension();
       g.drawText(cellText, 2, 0, width - 4, height,
                  juce::Justification::centredLeft, true);
     }
