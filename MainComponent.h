@@ -20,7 +20,7 @@
 #include "Quizz/Sampler.h"
 #include "Quizz/Sequencer.h"
 #include "Quizz/QuizzSource.h"
-#include "Quizz/QuizzComponent.h"
+#include "Quizz/Views/QuizzComponent.h"
 
 using namespace juce;
 

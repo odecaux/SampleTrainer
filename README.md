@@ -16,4 +16,3 @@ osef/hard : \
 Behaviour if there's a single sample in a quizz column.\
 A sequencer interface, midi import.\
 UI & graphics work.\
-Background loading.

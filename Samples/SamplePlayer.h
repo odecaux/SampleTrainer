@@ -32,28 +32,31 @@ public:
 
   void loadURLIntoTransport(const SampleInfos &sampleInfos) {
     // unload the previous file source and delete it..
-    transportSource.stop();
-    transportSource.setSource(nullptr);
-    memorySource.reset();
 
-    if(auto sample = sampleLoader.getOrCreateSampleBuffer(sampleInfos)) {
+    sampleLoader.getOrCreateSampleBufferAsync(sampleInfos,
+                                              [this](const SampleBufferPtr &sample) {
+          if (sample) {
+            std::scoped_lock lock(mutex);
+            transportSource.stop();
+            transportSource.setSource(nullptr);
+            memorySource.reset();
+            memorySource = std::make_unique<juce::MemoryAudioSource>(
+                sample->buffer, false, false);
 
-      memorySource = std::make_unique<juce::MemoryAudioSource>(sample->buffer,
-                                                               false, false);
+            transportSource.setSource(memorySource.get(), 0, nullptr,
+                                      sample->sourceSampleRate,
+                                      sample->buffer.getNumChannels());
 
-      transportSource.setSource(memorySource.get(), 0, nullptr,
-                                sample->sourceSampleRate,
-                                sample->buffer.getNumChannels());
-
-      transportSource.setPosition(0);
-      transportSource.start();
-    }
-    else
-      //cache should always return a valid buffer
-      jassertfalse;
+            transportSource.setPosition(0);
+            transportSource.start();
+          } else
+            // cache should always return a valid buffer
+            jassertfalse;
+        });
   }
 
 private:
+  std::mutex mutex;
   juce::AudioDeviceManager &audioDeviceManager;
 
   juce::AudioSourcePlayer audioSourcePlayer;

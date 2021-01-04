@@ -26,6 +26,28 @@ void SampleBufferCache::checkForSamplesToFree() {
                       sampleBuffers.end());*/
 }
 
+
+void SampleBufferCache::getOrCreateSampleBufferAsync(const SampleInfos &sampleInfos, const Callback& callback)
+{
+  auto position_samples  = sampleBuffers.find(sampleInfos.file);
+
+  //in memory
+  if(position_samples != sampleBuffers.end())
+    callback(position_samples->second);
+
+  //already loading
+  auto file = sampleInfos.file.getFullPathName().toStdString();
+  auto position_futures  = futures.find(file);
+  if(position_samples != sampleBuffers.end())
+    return;
+
+  futures.emplace(file,
+                  std::make_pair(std::async(std::launch::async,
+                                            &SampleBufferCache::createBuffer,
+                                            this, sampleInfos),
+                                 callback));
+}
+
 SampleBufferPtr SampleBufferCache::createBuffer(const SampleInfos &sampleInfos) {
   std::unique_ptr<juce::AudioFormatReader> reader{
       formatManager.createReaderFor(sampleInfos.file)};
@@ -35,7 +57,7 @@ SampleBufferPtr SampleBufferCache::createBuffer(const SampleInfos &sampleInfos) 
 
   auto numChannels = juce::jmin(static_cast<int>(reader->numChannels), 2);
   auto sourceSampleRate = reader->sampleRate;
-  int length = juce::jmin<int>(reader->lengthInSamples, sourceSampleRate * 5);
+  int length = juce::jmin<int>(reader->lengthInSamples, sourceSampleRate * 1000);
 
   jassert(length > 0);
   jassert(numChannels > 0);

@@ -3,8 +3,8 @@
 #include <lager/lenses/variant.hpp>
 #include "juce_audio_utils/juce_audio_utils.h"
 
-#include "../Samples/SampleInfos.h"
-#include "Game.h"
+#include "../../Samples/SampleInfos.h"
+#include "../Game.h"
 #include "QuizzComponent.h"
 #include <utility>
 
