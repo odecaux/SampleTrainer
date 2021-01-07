@@ -84,12 +84,14 @@ model answer(model current, answerQuestion action)
 
     current.score.correct_anwsers += 1;
     current.score.total_answers += 1;
+
+    current.type = Pause{true};
   }
   else{
     current.score.total_answers += 1;
+    current.type = Pause{false};
   }
 
-  current.type = Pause{};
   return current;
 }
 

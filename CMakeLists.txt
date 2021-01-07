@@ -18,7 +18,6 @@ target_sources(SampleTrainer PRIVATE
         Quizz/Sampler.cpp
         Samples/SampleRepository.cpp
         SampleSelector/SampleSelectorPanel.cpp
-        Quizz/Views/QuizzComponent.cpp
         Quizz/Game.cpp)
 
 target_compile_definitions(SampleTrainer PRIVATE

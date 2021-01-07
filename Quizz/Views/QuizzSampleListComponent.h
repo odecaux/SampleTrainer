@@ -9,17 +9,23 @@
 class QuizzSampleListComponent : public juce::Component,
                                  public juce::ListBoxModel
 {
-  lager::reader<std::vector<SampleInfos>> samples;
+  const std::vector<SampleInfos>& samples;
   lager::reader<std::optional<int>> index_;
   lager::context<Quizz::selectSample> ctx_;
   juce::ListBox listBox;
 
+  SampleType sample_type_;
+
+
 public:
-  QuizzSampleListComponent(lager::reader<std::vector<SampleInfos>> samples,
+  QuizzSampleListComponent(const std::vector<SampleInfos>& samples,
                            lager::reader<std::optional<int>> index,
-                           lager::context<Quizz::selectSample> ctx)
-      : samples(std::move(samples)), index_(std::move(index)),
-        ctx_(std::move(ctx))
+                           lager::context<Quizz::selectSample> ctx,
+                           SampleType sample_type) :
+        samples(samples),
+        index_(std::move(index)),
+        ctx_(std::move(ctx)),
+        sample_type_(sample_type)
   {
     watch(index_, [this](std::optional<int> new_index){
       listBox.updateContent();
@@ -37,12 +43,12 @@ private:
     listBox.setBounds(getLocalBounds());
   }
 
-  int getNumRows() override {return samples->size();}
+  int getNumRows() override {return samples.size();}
 
   void listBoxItemClicked(int row, const juce::MouseEvent &mouseEvent) override
   {
     auto prev = *index_;
-    ctx_.dispatch(Quizz::selectSample{ samples.get()[row].type, row });
+    ctx_.dispatch(Quizz::selectSample{ sample_type_, row });
     std::cout<< (prev != *index_) <<std::endl;
   }
 
@@ -66,7 +72,7 @@ private:
     g.setFont(juce::Font{});
 
     if (rowNumber < getNumRows()) {
-      auto cellText = samples.get()[rowNumber].file.getFileNameWithoutExtension();
+      auto cellText = samples[rowNumber].file.getFileNameWithoutExtension();
       g.drawText(cellText, 2, 0, width - 4, height,
                  juce::Justification::centredLeft, true);
     }

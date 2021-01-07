@@ -34,7 +34,9 @@ struct Question{
 };
 
 
-struct Pause{};
+struct Pause{
+  bool was_answer_right;
+};
 struct DisplayResults{};
 
 typedef std::variant<Auditioning,
@@ -100,7 +102,7 @@ BOOST_FUSION_ADAPT_STRUCT(Quizz::Auditioning, kick_index, hats_index, snare_inde
 BOOST_FUSION_ADAPT_STRUCT(Quizz::Question, question_kick_index, question_hats_index, question_snare_index,
                           answer_kick_index, answer_snare_index, answer_hats_index)
 BOOST_FUSION_ADAPT_STRUCT(Quizz::DisplayResults)
-BOOST_FUSION_ADAPT_STRUCT(Quizz::Pause)
+BOOST_FUSION_ADAPT_STRUCT(Quizz::Pause, was_answer_right)
 
 BOOST_FUSION_ADAPT_STRUCT(Quizz::Score, correct_anwsers, total_answers);
 BOOST_FUSION_ADAPT_STRUCT(Quizz::model, kicks, snares, hats, type, score);

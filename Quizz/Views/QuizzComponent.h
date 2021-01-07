@@ -3,7 +3,12 @@
 #include <utility>
 
 #include "QuizzSampleListComponent.h"
+#include "Panels.h"
 #include <lager/store.hpp>
+#include <lager/lenses/variant.hpp>
+#include <zug/transducer/filter.hpp>
+
+
 
 class ScoreLabel : public juce::Component{
 public:
@@ -16,6 +21,7 @@ public:
     });
     draw(*score);
     addAndMakeVisible(label);
+    label.setJustificationType(juce::Justification::centred);
   }
 private:
   void draw(int value){
@@ -31,78 +37,154 @@ private:
   }
 };
 
+class StepLabel : public juce::Component{
+  lager::reader<Quizz::StepType> step_;
+  juce::Label label;
+public:
+  explicit StepLabel(lager::reader<Quizz::StepType> step)
+  : step_(std::move(step))
+  {
+    step_.watch([this](Quizz::StepType newValue){
+      draw(newValue);
+    });
+    draw(*step_);
+    addAndMakeVisible(label);
+    label.setJustificationType(juce::Justification::centred);
+  }
+private:
+  void draw(Quizz::StepType newStep){
+    auto step_title = std::visit(lager::visitor{
+      [](Quizz::Auditioning){ return "Listen to the samples";},
+      [](Quizz::Question){ return "Guess which samples are used";},
+      [](Quizz::Pause){ return "";},
+      [](Quizz::DisplayResults){ return "End";},
+    },newStep);
 
-class QuizzComponent final : public juce::Component {
+    label.setText(step_title, juce::dontSendNotification);
+  }
+
+  void resized() override { label.setBounds(getLocalBounds()); }
+};
+
+
+
+class QuizzComponent : public juce::Component {
 
   lager::reader<Quizz::model> game_model;
-  lager::reader<Quizz::StepType> step;
   lager::reader<size_t> step_index;
-  lager::context<Quizz::quizzAction> ctx;
+  lager::context<Quizz::quizzAction> ctx_;
 
-  QuizzSampleListComponent hats_list;
-  QuizzSampleListComponent snare_list;
-  QuizzSampleListComponent kick_list;
 
   ScoreLabel total_score_label;
   ScoreLabel current_score_label;
 
-  juce::TextButton startButton{"Start"};
-  juce::TextButton answerButton{"Answer"};
-  juce::TextButton backButton{"Back"};
+  StepLabel step_title;
 
-  juce::Label title;
+  std::unique_ptr<juce::Component> panel;
 
+  template<typename T>
+  struct alt {
+    template <typename F>
+    auto operator()(F &&reducer) const {
+      return [=](auto &&s, auto &&is) mutable {
+        return std::holds_alternative<T>(is)
+                   ? reducer(s, std::get<T>(is))
+                   : s;
+      };
+    }
+  };
+
+
+  void updatePanel(size_t new_step_index){
+    switch(new_step_index){
+      case 0:
+        panel = std::make_unique<AuditioningPanel>(
+            game_model[&Quizz::model::type]
+                          .xform(alt<Quizz::Auditioning>{})
+                          .make(),
+                ctx_,
+                game_model->kicks.get(),
+                game_model->snares.get(),
+                game_model->hats.get());
+        break;
+
+      case 1:
+        panel = std::make_unique<QuestionPanel>(
+            game_model[&Quizz::model::type]
+                .xform(alt<Quizz::Question>{})
+                          .make(),
+                ctx_,
+                game_model->kicks.get(),
+                game_model->snares.get(),
+                game_model->hats.get());
+        break;
+      case 2: {
+        auto was_right =
+            std::get<Quizz::Pause>(game_model->type).was_answer_right;
+        panel = std::make_unique<PausePanel>(ctx_, was_right);
+        break;
+      }
+      case 3:
+        panel = nullptr;
+        break;
+      default: {}
+    }
+    addAndMakeVisible(panel.get());
+    resized();
+  }
 public:
-  explicit QuizzComponent(lager::reader<Quizz::model> model_,
-                          lager::context<Quizz::quizzAction> ctx_);
+  explicit QuizzComponent(const lager::reader<Quizz::model>& model,
+                          lager::context<Quizz::quizzAction> ctx)
+      : game_model(model),
+        step_index(model[&Quizz::model::type]
+                        .xform(zug::map([](auto var) { return var.index();}))),
+        ctx_(std::move(ctx)),
 
-  ~QuizzComponent() override = default;
+        current_score_label(
+            "correct : ",
+            game_model[&Quizz::model::score][&Quizz::Score::correct_anwsers]),
+        total_score_label(
+            "total : ",
+            game_model[&Quizz::model::score][&Quizz::Score::total_answers]),
 
-  //----------------------------------------------------------------------------
+        step_title(game_model[&Quizz::model::type])
+  {
 
-  void paint(juce::Graphics &g) override {}
+    step_index.watch([this](const auto& new_step){
+      updatePanel(new_step);
+    });
+    updatePanel(step_index.get());
 
-  void resized() override;
 
-private:
-  void startClicked() { startNextQuestion(); }
+    addAndMakeVisible(current_score_label);
+    addAndMakeVisible(total_score_label);
 
-  void startNextQuestion() { ctx.dispatch(Quizz::nextQuestion{}); }
-
-  void answerClicked(){ ctx.dispatch(Quizz::answerQuestion{}); }
-
-  void backPressed() { ctx.dispatch(Quizz::leaveQuizz{}); }
-
-  void typeChanged(Quizz::StepType newType) {
-    std::visit(lager::visitor{
-                   [this](Quizz::Auditioning){
-                     current_score_label.setVisible(false);
-                     total_score_label.setVisible(false);
-                     startButton.setVisible(true);
-                     answerButton.setVisible(false);
-                   },
-                   [this](Quizz::Question){
-                     current_score_label.setVisible(true);
-                     total_score_label.setVisible(true);
-                     startButton.setVisible(false);
-                     answerButton.setVisible(true);
-                   },
-                   [this](Quizz::Pause){
-                     juce::AlertWindow::showMessageBoxAsync(
-                         juce::AlertWindow::NoIcon,
-                         "wsh", "test",
-                         "next", this,
-                         juce::ModalCallbackFunction::create([this](int){startNextQuestion();}));
-                   },
-                   [this](Quizz::DisplayResults){
-                     current_score_label.setVisible(true);
-                     total_score_label.setVisible(true);
-                     startButton.setVisible(false);
-                     answerButton.setVisible(false);
-                   },
-
-    }, newType);
-
+    addAndMakeVisible(step_title);
   }
 
+  void resized() override
+  {
+    auto totalBounds = getLocalBounds().reduced(10);
+
+    auto titleHeight = 30;
+
+    auto titleBounds = totalBounds.withHeight(titleHeight);
+    step_title.setBounds(titleBounds);
+
+    auto bounds = totalBounds.withTrimmedTop(titleHeight);
+
+    int topHeight = 30;
+
+    auto topBound = bounds.withHeight(topHeight);
+    current_score_label.setBounds(topBound.withTrimmedLeft(topBound.getWidth()/2));
+    total_score_label.setBounds(topBound.withTrimmedRight(topBound.getWidth()/2));
+
+
+    auto listBound = bounds.withTrimmedTop(topHeight);
+
+    if(panel)
+     panel->setBounds(listBound);
+  }
+
+  void paint(juce::Graphics &g) override {}
 };
