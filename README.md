@@ -6,13 +6,13 @@ TODO:
 high priority/easy : \
 rework the symbols/namespace and imports\
 "Add Folder", "Add Files", "Remove Sample" buttons.\
+Behaviour if there's a single sample in a quizz column.\
 
 intermediate : \
 integrate to sample repository into the application model\
-A sample waveform visualizer in the selector.\
 
 
 osef/hard : \
-Behaviour if there's a single sample in a quizz column.\
+A sample waveform visualizer in the selector.\
 A sequencer interface, midi import.\
 UI & graphics work.\
